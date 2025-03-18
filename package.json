@@ -1,19 +1,30 @@
 {
   "name": "worker-maintainer",
   "version": "1.0.0",
-  "description": "",
+  "description": "RunPod Worker Repository Build Validator using Mastra.ai",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "mastra dev"
+    "dev": "mastra dev",
+    "start": "tsx src/index.ts"
   },
-  "keywords": [],
+  "keywords": [
+    "runpod",
+    "docker",
+    "github",
+    "mastra",
+    "workflow"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
     "@ai-sdk/openai": "^1.2.5",
     "@mastra/core": "^0.6.1",
+    "@mastra/mcp": "^0.3.2",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.7",
+    "fastmcp": "^1.20.5",
     "mastra": "^0.4.0",
     "zod": "^3.24.2"
   },
