@@ -194,20 +194,16 @@ export const checkoutGitRepository = async (
 export const gitCheckoutTool = createTool({
   id: "Git Checkout",
   inputSchema: z.object({
-    repoName: z
+    repository: z
       .string()
-      .describe("Repository name without organization (e.g., 'repo-name')"),
-    organization: z
-      .string()
-      .describe("GitHub organization or username (e.g., 'runpod')"),
+      .describe("Full repository name (e.g., 'organization/repo-name')"),
   }),
   description: "Checks out or updates a Git repository",
   execute: async ({ context }) => {
-    // Combine organization and repo name into the format expected by checkoutGitRepository
-    const fullRepoName = `${context.organization}/${context.repoName}`;
+    const fullRepoName = context.repository;
 
     console.log(`===== GIT CHECKOUT OPERATION =====`);
-    console.log(`Using combined repository name: ${fullRepoName}`);
+    console.log(`Repository: ${fullRepoName}`);
     console.log(`Current working directory: ${process.cwd()}`);
     console.log(
       `Repos directory will be: ${path.join(process.cwd(), "repos")}`

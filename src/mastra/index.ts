@@ -6,6 +6,7 @@ import { repoValidatorWorkflow } from "./workflows/repoValidator";
 import { repoValidatorAgent } from "./agents/repoValidatorAgent";
 import { simpleTestWorkflow } from "./workflows/simple-test";
 import { githubCheckoutWorkflow } from "./workflows/github-checkout";
+import { dockerValidationWorkflow } from "./workflows/docker-validation-workflow";
 
 export const mastra = new Mastra({
   workflows: {
@@ -13,6 +14,7 @@ export const mastra = new Mastra({
     repoValidatorWorkflow,
     simpleTestWorkflow,
     githubCheckoutWorkflow,
+    dockerValidationWorkflow,
   },
   agents: {
     weatherAgent,

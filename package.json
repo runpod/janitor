@@ -9,7 +9,16 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",
-    "test:docker": "tsx src/test-direct-docker-tools.ts"
+    "test:docker": "tsx src/test-direct-docker-tools.ts",
+    "test:workflow": "tsx src/test-docker-validation.ts",
+    "test:docker-workflow": "tsx src/test-docker-workflow.ts",
+    "validate-repos": "tsx src/test-validate-multiple.ts",
+    "test:direct": "tsx src/test-direct-validation.ts",
+    "test:tool": "tsx src/test-tool-direct.ts",
+    "test:agent": "tsx src/test-agent-simple.ts",
+    "test:empty-logs": "tsx src/test-empty-logs.ts",
+    "test:logs-comparison": "tsx src/test-empty-vs-full-logs.ts",
+    "test:simple": "tsx src/test-simple.ts"
   },
   "keywords": [
     "runpod",
