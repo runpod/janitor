@@ -17,7 +17,7 @@ Create a Mastra.ai workflow that:
 3. Implements a workflow with separate steps:
    - **Step 1**: Repository Checkout - Uses the GitHub MCP server to check out or update repositories
    - **Step 2**: Dockerfile Validation - Locates Dockerfiles in the repositories
-   - **Step 3**: Docker Build - Uses the Docker MCP server to build images targeting linux/amd64
+   - **Step 3**: Docker Build - Uses the Docker MCP server to build images with docker buildx targeting linux/amd64
    - **Step 4**: Container Testing - Starts the Docker containers to verify they run correctly
    - **Step 5**: Report Generation - Creates a final report with build and test results
 4. Includes an agent interface for interacting with the workflow and responding to failures
@@ -62,4 +62,4 @@ Create a Mastra.ai workflow that:
 - Configure proper error handling and observability to track the workflow's progress
 - Implement the agent interface using Mastra's agent capabilities with LLM assistance for analysis
 - For GitHub operations, set up with a GitHub Personal Access Token
-- For Docker operations, ensure proper configuration for linux/amd64 platform targeting
+- For Docker operations, ensure proper configuration for docker buildx with linux/amd64 platform targeting

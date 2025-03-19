@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "mastra dev",
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",
+    "test:docker": "tsx src/test-direct-docker-tools.ts"
   },
   "keywords": [
     "runpod",

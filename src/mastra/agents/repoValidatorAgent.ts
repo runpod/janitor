@@ -4,6 +4,11 @@ import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
 import { repoValidatorWorkflow } from "../workflows/repoValidator";
 import { gitCheckoutTool } from "../../git-tools";
+import {
+  dockerBuildTool,
+  dockerRunTool,
+  dockerCleanupTool,
+} from "../../docker-tools";
 
 // Define types for step results
 interface StepSuccess<T> {
@@ -209,5 +214,8 @@ export const repoValidatorAgent = new Agent({
     validateRepositoryTool,
     validateRepositoriesFromFileTool,
     gitCheckoutTool,
+    dockerBuildTool,
+    dockerRunTool,
+    dockerCleanupTool,
   },
 });

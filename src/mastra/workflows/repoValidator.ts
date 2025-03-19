@@ -33,12 +33,6 @@ const setupMCP = async () => {
           ...(process.env as Record<string, string>),
         },
       },
-      // We'll keep our custom Docker MCP server for now
-      docker: {
-        command: "node",
-        args: ["dist/mastra/tools/mcp-servers.js", "docker"],
-        env: process.env as Record<string, string>,
-      },
     },
   });
 };
@@ -215,50 +209,29 @@ const dockerBuild = new Step({
         throw new Error("Dockerfile validation failed or path not available");
       }
 
-      const repoPath = path.dirname(path.dirname(validationResult.path));
-
-      if (!repoPath) {
-        throw new Error("Repository path not available");
-      }
-
-      // Set up MCP to use Docker server
-      const mcp = await setupMCP();
-      const toolsets = await mcp.getToolsets();
-
-      console.log(`Building Docker image from ${validationResult.path}`);
+      const dockerfilePath = validationResult.path;
 
       // Extract repository name from the path for image tagging
+      const repoPath = path.dirname(path.dirname(dockerfilePath));
       const repoName = path.basename(repoPath);
       const imageTag = `runpod-validator/${repoName.toLowerCase()}:latest`;
 
-      // Build the Docker image using MCP docker server
-      const contextPath = path.dirname(validationResult.path);
+      // Set platform
       const platform = process.env.DOCKER_PLATFORM || "linux/amd64";
 
-      console.log(
-        `Building image ${imageTag} with context ${contextPath} and platform ${platform}`
+      console.log(`Building Docker image from ${dockerfilePath}`);
+      console.log(`Image tag: ${imageTag}`);
+      console.log(`Platform: ${platform}`);
+
+      // Import and use the buildDockerImage function directly
+      const { buildDockerImage } = await import("../../docker-tools.js");
+
+      // Build the Docker image
+      const buildResult = await buildDockerImage(
+        dockerfilePath,
+        imageTag,
+        platform
       );
-
-      // Use Docker MCP to build image
-      type BuildImageParams = {
-        dockerfilePath: string;
-        contextPath: string;
-        imageTag: string;
-        platform: string;
-      };
-
-      const buildImage = toolsets["docker.buildImage"] as (
-        params: BuildImageParams
-      ) => Promise<string>;
-      const result = await buildImage({
-        dockerfilePath: validationResult.path,
-        contextPath: contextPath,
-        imageTag: imageTag,
-        platform: platform,
-      });
-
-      // Parse the result
-      const buildResult = JSON.parse(result);
 
       if (!buildResult.success) {
         throw new Error(buildResult.error || "Failed to build Docker image");
@@ -266,13 +239,10 @@ const dockerBuild = new Step({
 
       console.log(`Docker build completed for ${imageTag}`);
 
-      // Disconnect from MCP when done
-      await mcp.disconnect();
-
       return {
         success: true,
-        imageId: imageTag,
-        logs: buildResult.logs,
+        imageId: buildResult.imageName,
+        logs: buildResult.output,
       };
     } catch (error) {
       console.error(
@@ -300,10 +270,6 @@ const containerTesting = new Step({
         throw new Error("Docker build failed or image ID not available");
       }
 
-      // Set up MCP to use Docker server
-      const mcp = await setupMCP();
-      const toolsets = await mcp.getToolsets();
-
       console.log(`Testing container for image: ${buildResult.imageId}`);
 
       // Create a unique container name
@@ -313,40 +279,51 @@ const containerTesting = new Step({
         `Starting container ${containerName} from image ${buildResult.imageId}`
       );
 
-      // Use Docker MCP to run container
-      type RunContainerParams = {
-        imageId: string;
-        containerName: string;
-        timeout: number;
-        removeAfterRun: boolean;
-      };
+      // Import the docker tools
+      const { runDockerContainer, cleanupContainer } = await import(
+        "../../docker-tools.js"
+      );
 
-      const runContainer = toolsets["docker.runContainer"] as (
-        params: RunContainerParams
-      ) => Promise<string>;
-      const result = await runContainer({
-        imageId: buildResult.imageId,
-        containerName: containerName,
-        timeout: 60, // seconds
-        removeAfterRun: true,
-      });
+      // Run the container
+      const runResult = await runDockerContainer(
+        buildResult.imageId,
+        containerName
+      );
 
-      // Parse the result
-      const runResult = JSON.parse(result);
-
-      if (!runResult.success) {
+      if (!runResult.success || !runResult.containerId) {
         throw new Error(runResult.error || "Container test failed");
       }
 
-      console.log(`Container test completed for ${containerName}`);
+      console.log(`Container started with ID: ${runResult.containerId}`);
 
-      // Disconnect from MCP when done
-      await mcp.disconnect();
+      // Wait for a short time to let the container initialize
+      console.log(`Waiting for 60 seconds to test container...`);
+      await new Promise((resolve) => setTimeout(resolve, 60000));
+
+      // Get container logs
+      const { execSync } = require("child_process");
+      let logs = "";
+
+      try {
+        logs = execSync(`docker logs ${runResult.containerId}`, {
+          encoding: "utf8",
+        });
+      } catch (error) {
+        console.warn(
+          `Warning: Failed to get container logs: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+
+      // Clean up the container
+      console.log(`Cleaning up container ${runResult.containerId}`);
+      await cleanupContainer(runResult.containerId);
+
+      console.log(`Container test completed for ${containerName}`);
 
       return {
         success: true,
-        containerId: containerName,
-        logs: runResult.logs,
+        containerId: runResult.containerId,
+        logs: logs,
       };
     } catch (error) {
       console.error(

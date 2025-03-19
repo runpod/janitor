@@ -1,0 +1,4 @@
+repos/runpod-workers-worker-stable_diffusion_v2
+./
+worker-stable-diffusion:latest
+linux/amd64
