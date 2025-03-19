@@ -118,7 +118,81 @@ We've created a robust Git checkout system with the following features:
 - Include error classification for common Git failure scenarios (not found, timeout, etc.)
 - Return structured error objects rather than throwing exceptions
 
+## Docker Operations
+
+### Cross-Platform Support
+
+The Docker tools provide cross-platform compatibility, ensuring proper operation on both Windows and Linux:
+
+- Windows systems use manual directory scanning to find Dockerfiles
+- Linux systems use the `find` command with a fallback to manual scanning if it fails
+- Use platform detection (`process.platform === 'win32'`) to select the appropriate method
+
+### Logs Handling
+
+When dealing with Docker container logs:
+
+- Always consider containers with no logs as valid (not an error condition)
+- Check the success status of log retrieval operations, not the presence of logs
+- Use `lineCount` to indicate empty logs rather than treating them as failures
+- Include helpful messages in the report for empty logs (e.g., "No logs produced by container or logs were empty. This is not an error.")
+
 ## Mastra Integration
+
+### Workflow-Agent Integration
+
+When connecting workflows with agents:
+
+1. **Create a Tool Wrapper**:
+
+   - Import the workflow directly in the tool file (avoid circular imports)
+   - Execute the workflow using `createRun()` and `start()`
+   - Extract and format the report from workflow results
+
+2. **Access the Mastra Instance**:
+   - Get it via the `mastra` parameter in the tool's execute function
+   - Don't import the mastra instance directly in tool files
+   - Use it to access workflows: `mastra.getWorkflow("workflowName")`
+
+Example of a tool that executes a workflow:
+
+```typescript
+export const dockerValidationTool = createTool({
+  id: "Docker Repository Validator",
+  description: "Validates a Docker repository",
+  inputSchema,
+  execute: async ({ context, mastra }) => {
+    try {
+      const workflow = mastra.getWorkflow("dockerValidationWorkflow");
+      const { runId, start } = workflow.createRun();
+      const result = await start({
+        triggerData: { repository: context.repository, ... }
+      });
+
+      // Extract the report from results
+      const reportStep = result.results?.report;
+      if (reportStep?.status === "success") {
+        return {
+          success: true,
+          report: reportStep.output.report
+        };
+      }
+
+      return { success: false, error: "Report generation failed" };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  },
+});
+```
+
+### Step Design
+
+When designing workflow steps:
+
+1. **Give Clear IDs**: Use descriptive step IDs (e.g., `checkout`, `build`, `report`) that match how you'll access them in results
+2. **Handle Empty Outputs**: Consider empty results like logs as valid rather than errors
+3. **Use Report Pattern**: Create a dedicated report generation step that summarizes all previous steps
 
 ### Tool Implementation
 
@@ -176,28 +250,37 @@ if (!result.success) {
 }
 ```
 
-## Core Project Guidelines
+## Testing Approaches
 
-### Code Structure
+### Direct Function Testing
 
-- **Modular Design**: Each capability should be in its own file
-- **Shared Utilities**: Common functions should be shared across workflows
-- **Typed Interfaces**: Use TypeScript interfaces for consistent data structures
-- **Clear Naming**: Use descriptive names that indicate purpose
+- Create dedicated test files for core functions (e.g., `test-docker-tools.ts`)
+- Test each function with valid and invalid inputs
+- Ensure comprehensive error handling
 
-### Error Handling
+### Workflow Testing
 
-- Always use structured error responses
-- Include both success indicators and error messages
-- Log detailed information for debugging
-- Return errors rather than throwing exceptions when possible
+- Test workflows directly using `createRun()` and `start()`
+- Verify each step's output and the final results
+- Test different input scenarios, including edge cases
 
-### Testing
+### Tool Testing
 
-- Create dedicated test files (like `test-git-checkout.ts`, `test-docker-tools.ts`)
-- Test with both valid and invalid inputs
-- Include error handling in tests
-- Verify outputs against expectations
+- Test tools by directly calling the `execute` method with correct context
+- Use type assertions if needed to satisfy TypeScript requirements
+- Check tool results for expected output format and content
+
+### Agent Testing
+
+- Test agents by generating responses with specific prompts
+- Examine both the response text and tool results
+- Include proper error handling for agent responses
+
+### Cross-Platform Testing
+
+- Always test file operations on both Windows and Linux
+- Use platform detection to handle differences
+- Implement fallback mechanisms for platform-specific features
 
 ## Common Issues & Solutions
 
@@ -232,16 +315,26 @@ const options = {
 - Support both combined format (`owner/repo`) and separate fields
 - Implement validation and fallbacks
 
-### Mastra Tool Integration
+### Docker Logs Validation
 
-**Issue**: Inconsistent implementation approaches leading to unnecessary complexity.
+**Issue**: Empty logs can be valid but might be treated as failures.
 
 **Solution**:
 
-- Prefer direct tool implementation using `createTool` from `@mastra/core/tools`
-- Only use MCP servers when specifically required for external integrations
-- Follow consistent patterns across all tools in the project
-- Document the reasoning when deviating from standard patterns
+- Check for operation success, not content presence
+- Consider empty logs as valid output
+- Provide clear indication in reports for empty logs
+- Add explanatory messages to empty log reports
+
+### Circular Dependencies
+
+**Issue**: Importing the mastra instance in tools can create circular dependencies.
+
+**Solution**:
+
+- Access the mastra instance through tool execution parameters
+- Define a clear import hierarchy
+- In agent tests, retrieve agent instances from mastra instead of direct imports
 
 ## Future Enhancements
 
@@ -252,6 +345,7 @@ Potential areas for improvement:
 3. **Depth Control**: Support shallow clones for large repositories
 4. **Progress Reporting**: Better progress indicators for long-running operations
 5. **Workspace Isolation**: Clone repos to isolated workspaces to prevent conflicts
+6. **Improved Log Analysis**: Add pattern matching for common Docker errors in logs
 
 ## Conclusion
 

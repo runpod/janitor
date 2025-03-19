@@ -27,8 +27,8 @@
     "mastra",
     "workflow"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "RunPod",
+  "license": "MIT",
   "type": "module",
   "dependencies": {
     "@ai-sdk/openai": "^1.2.5",
