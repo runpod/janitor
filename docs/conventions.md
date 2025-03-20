@@ -2,6 +2,25 @@
 
 This document outlines the conventions, patterns, and lessons learned during the development of the Worker Maintainer project. Use this as a reference for future development and to onboard new contributors.
 
+## Project Structure
+
+### Directory Organization
+
+- Place all Mastra-related code in `src/mastra/` directory
+- Organize by component type:
+  - Agents: `src/mastra/agents/`
+  - Tools: `src/mastra/tools/`
+  - Workflows: `src/mastra/workflows/`
+- Keep test files with `test-` prefix in `src/` directory
+- Use index files to export components from each directory
+
+### Export Patterns
+
+- Create agent instances in their own files (e.g., `repository-repair-agent.ts`)
+- Export core agent creation functions (e.g., `createRepositoryRepairAgent`)
+- Export agent instances from `src/mastra/agents/index.ts`
+- Register all components in the main Mastra instance in `src/mastra/index.ts`
+
 ## Tool Implementation Approaches
 
 ### Direct Tool Integration (PREFERRED)
@@ -95,6 +114,41 @@ const mcp = new MCPConfiguration({
 });
 ```
 
+## Agent Architecture
+
+### Component Communication Patterns
+
+When implementing agent workflows with multiple components:
+
+1. **Validator-Repair Pattern**:
+
+   - Validator agents should use tool interfaces to request repairs
+   - Repair tools should connect to specialized repair agents
+   - Each component should have a single responsibility
+   - Use clear signaling between components for next actions
+
+2. **Tool Response Structure**:
+
+   - Always include a `success` boolean flag
+   - Return rich metadata needed for subsequent steps
+   - Use consistent property naming across tools
+   - Signal when additional actions are required
+   - Example:
+     ```typescript
+     return {
+       success: true,
+       // Additional metadata for next steps
+       needsNextStep: true,
+       sourcePath: context.inputPath,
+     };
+     ```
+
+3. **Multiple Agent Coordination**:
+   - Use separation of concerns between specialized agents
+   - Orchestrator agents focus on coordination and decision-making
+   - Worker agents focus on specific tasks (validation, repair)
+   - Maintain clear communication interfaces between them
+
 ## Git Operations
 
 ### Repository Checkout Implementation
@@ -136,6 +190,23 @@ When dealing with Docker container logs:
 - Check the success status of log retrieval operations, not the presence of logs
 - Use `lineCount` to indicate empty logs rather than treating them as failures
 - Include helpful messages in the report for empty logs (e.g., "No logs produced by container or logs were empty. This is not an error.")
+
+## Environment Configuration
+
+### API Key Management
+
+- Store all API keys in `.env.development`
+- Follow standard naming conventions (e.g., `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)
+- Check for presence of required keys before agent initialization
+- Provide clear error messages when keys are missing
+
+### Model Configuration
+
+- Configure model parameters in the agent creation files
+- Use appropriate model identifiers for each AI provider:
+  - For Anthropic: Use correct versioned identifiers (e.g., `claude-3-sonnet-20240229`, `claude-3-7-sonnet-latest`)
+  - For OpenAI: Use their model naming format (e.g., `gpt-4o`)
+- Verify model availability with your API key before deployment
 
 ## Mastra Integration
 
@@ -252,6 +323,18 @@ if (!result.success) {
 
 ## Testing Approaches
 
+### Test Organization
+
+- Name test files with the `test-` prefix followed by what is being tested
+- Examples: `test-repair-tool.ts`, `test-validator-repair-integration.ts`
+- Register all test scripts in `package.json` under "scripts" section
+- Use consistent naming patterns: `test:repair-tool`, `test:integration`
+- Create separate tests for:
+  - Direct function tests
+  - Tool interface tests
+  - Agent tests
+  - Integration tests between components
+
 ### Direct Function Testing
 
 - Create dedicated test files for core functions (e.g., `test-docker-tools.ts`)
@@ -281,6 +364,13 @@ if (!result.success) {
 - Always test file operations on both Windows and Linux
 - Use platform detection to handle differences
 - Implement fallback mechanisms for platform-specific features
+
+### Integration Testing
+
+- Test individual components first (tools, agents)
+- Then test integration between components
+- Create mock repositories with known issues for testing
+- Verify the end-to-end workflow functions correctly
 
 ## Common Issues & Solutions
 
@@ -346,6 +436,7 @@ Potential areas for improvement:
 4. **Progress Reporting**: Better progress indicators for long-running operations
 5. **Workspace Isolation**: Clone repos to isolated workspaces to prevent conflicts
 6. **Improved Log Analysis**: Add pattern matching for common Docker errors in logs
+7. **Enhanced Agent Debugging**: Log full agent thought processes for troubleshooting
 
 ## Conclusion
 
