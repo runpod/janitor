@@ -114,6 +114,50 @@ const mcp = new MCPConfiguration({
 });
 ```
 
+#### GitHub MCP Server Configuration
+
+When working with the GitHub MCP server specifically:
+
+1. **GitHub Personal Access Token**: Always store GitHub tokens in `.env.development` with the name `GITHUB_PERSONAL_ACCESS_TOKEN` and ensure it has appropriate repository permissions.
+
+2. **MCP Server Configuration**: Configure the GitHub MCP server with the proper command and arguments based on your operating system:
+
+   **For Windows:**
+
+   ```typescript
+   const githubMCP = new MCPConfiguration({
+     id: "github-server-agent",
+     servers: {
+       github: {
+         command: "cmd",
+         args: ["/c", "npx -y @modelcontextprotocol/server-github"],
+         env: {
+           GITHUB_PERSONAL_ACCESS_TOKEN:
+             process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
+         },
+       },
+     },
+   });
+   ```
+
+   **For Mac/Linux:**
+
+   ```typescript
+   const githubMCP = new MCPConfiguration({
+     id: "github-server-agent",
+     servers: {
+       github: {
+         command: "npx",
+         args: ["-y", "@modelcontextprotocol/server-github"],
+         env: {
+           GITHUB_PERSONAL_ACCESS_TOKEN:
+             process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
+         },
+       },
+     },
+   });
+   ```
+
 ## Agent Architecture
 
 ### Component Communication Patterns

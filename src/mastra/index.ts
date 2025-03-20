@@ -10,7 +10,9 @@ import { repoValidatorWorkflow } from "./workflows/repoValidator";
 import { simpleTestWorkflow } from "./workflows/simple-test";
 import { githubCheckoutWorkflow } from "./workflows/github-checkout";
 import { dockerValidationWorkflow } from "./workflows/docker-validation-workflow";
+import { repositoryPRWorkflow } from "./workflows/repository-pr-workflow";
 
+// Initialize the Mastra instance with proper configuration
 export const mastra = new Mastra({
   workflows: {
     weatherWorkflow,
@@ -19,6 +21,7 @@ export const mastra = new Mastra({
     githubCheckoutWorkflow,
     dockerValidationWorkflow,
     repositoryRepairWorkflow,
+    repositoryPRWorkflow,
   },
   agents: {
     weatherAgent,

@@ -11,6 +11,8 @@ import {
   editFileTool,
 } from "../tools/file-system-tools.js";
 import { createRepositoryRepairAgent } from "./repository-repair-agent.js";
+import { createRepositoryPRTool } from "../tools/repository-pr-tool.js";
+import { createRepositoryPRAgent } from "./repository-pr-agent.js";
 
 const weatherAgent = new Agent({
   name: "Weather Agent",
@@ -78,5 +80,13 @@ const repoValidatorAgent = new Agent({
 // Create the repository repair agent
 const repositoryRepairAgent = createRepositoryRepairAgent();
 
+// Create the repository PR agent
+const repositoryPRAgent = createRepositoryPRAgent();
+
 // Export all agents
-export { weatherAgent, repoValidatorAgent, repositoryRepairAgent };
+export {
+  weatherAgent,
+  repoValidatorAgent,
+  repositoryRepairAgent,
+  repositoryPRAgent,
+};

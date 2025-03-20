@@ -1,0 +1,11 @@
+=== PR Agent Test Log ===
+
+[2025-03-20T20:14:47.150Z] Testing Repository PR Agent
+[2025-03-20T20:14:47.151Z] GitHub token available: true
+[2025-03-20T20:14:47.151Z] Using timestamp: 20250320201447
+[2025-03-20T20:14:47.152Z] Sending prompt to agent...
+[2025-03-20T20:15:02.787Z] Agent response received
+
+Agent response:
+
+[2025-03-20T20:15:02.788Z] Test completed successfully!

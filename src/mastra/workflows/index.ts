@@ -4,6 +4,10 @@ import { Step, Workflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { repositoryRepairWorkflow } from "./repository-repair-workflow.js";
 import { dockerValidationWorkflow } from "./docker-validation-workflow.js";
+import { repositoryPRWorkflow } from "./repository-pr-workflow.js";
+import { repoValidatorWorkflow } from "./repoValidator.js";
+import { simpleTestWorkflow } from "./simple-test.js";
+import { githubCheckoutWorkflow } from "./github-checkout.js";
 
 const llm = openai("gpt-4o");
 
@@ -186,4 +190,76 @@ const weatherWorkflow = new Workflow({
 weatherWorkflow.commit();
 
 // Export all workflows
-export { weatherWorkflow, dockerValidationWorkflow, repositoryRepairWorkflow };
+export {
+  repositoryRepairWorkflow,
+  repositoryPRWorkflow,
+  dockerValidationWorkflow,
+  repoValidatorWorkflow,
+  simpleTestWorkflow,
+  githubCheckoutWorkflow,
+};
+
+// Export workflows
+export * from "./repository-repair-workflow.js";
+export * from "./repository-pr-workflow.js";
+
+// Define a simple weather workflow for examples
+export const weatherWorkflow = new Workflow({
+  name: "Weather Workflow",
+  triggerSchema: z.object({
+    location: z.string().describe("The location to get weather for"),
+  }),
+  steps: {
+    getWeather: {
+      name: "Get Weather",
+      execute: async ({ context }) => {
+        const { location } = context.triggerData;
+
+        // This is just a mock implementation
+        const randomTemp = Math.floor(Math.random() * 30) + 10; // 10-40C
+        const conditions = [
+          "Sunny",
+          "Cloudy",
+          "Partly Cloudy",
+          "Rainy",
+          "Thunderstorms",
+          "Snowy",
+          "Foggy",
+        ];
+        const randomCondition =
+          conditions[Math.floor(Math.random() * conditions.length)];
+
+        return {
+          temperature: randomTemp,
+          condition: randomCondition,
+          location,
+          humidity: Math.floor(Math.random() * 60) + 30, // 30-90%
+          wind: Math.floor(Math.random() * 30), // 0-30 mph
+          forecast: "Similar conditions expected for the next 24 hours.",
+        };
+      },
+    },
+
+    formatReport: {
+      name: "Format Weather Report",
+      execute: async ({ stepResults }) => {
+        if (!stepResults.getWeather) {
+          throw new Error("Weather data is missing");
+        }
+
+        const { temperature, condition, location, humidity, wind } =
+          stepResults.getWeather;
+
+        const report = `
+          Weather Report for ${location}:
+          • Temperature: ${temperature}°C
+          • Condition: ${condition}
+          • Humidity: ${humidity}%
+          • Wind Speed: ${wind} mph
+        `;
+
+        return { report };
+      },
+    },
+  },
+});
