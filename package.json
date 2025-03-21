@@ -15,13 +15,18 @@
     "validate-repos": "tsx src/test-validate-multiple.ts",
     "test:direct": "tsx src/test-direct-validation.ts",
     "test:tool": "tsx src/test-tool-direct.ts",
-    "test:agent": "tsx src/test-agent-simple.ts",
+    "test:repository-validator-agent": "tsx src/test-repository-validator-agent.ts",
+    "test:repository-validator-workflow": "tsx src/test-repository-validator-workflow.ts",
     "test:empty-logs": "tsx src/test-empty-logs.ts",
     "test:logs-comparison": "tsx src/test-empty-vs-full-logs.ts",
     "test:simple": "tsx src/test-simple.ts",
     "test:mastra-repair": "tsx src/test-mastra-repair.ts",
+    "test:checkout": "tsx src/test-git-checkout.ts",
     "test:integration": "tsx src/test-validator-repair-integration.ts",
-    "test:repair-tool": "tsx src/test-repair-tool.ts"
+    "test:repair-tool": "tsx src/test-repair-tool.ts",
+    "test:pr-integration": "tsx src/test-pr-integration.ts",
+    "test:git-checkout": "tsx src/test-git-checkout.ts",
+    "test:simple-pr": "tsx src/test-simple-pr.ts"
   },
   "keywords": [
     "runpod",
@@ -50,6 +55,12 @@
   "devDependencies": {
     "@types/node": "^22.13.10",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-simple-import-sort": "^12.0.0",
+    "eslint-plugin-unused-imports": "^3.1.0"
   }
 }

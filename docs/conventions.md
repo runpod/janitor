@@ -1,6 +1,8 @@
 # Worker Maintainer Project Conventions
 
-This document outlines the conventions, patterns, and lessons learned during the development of the Worker Maintainer project. Use this as a reference for future development and to onboard new contributors.
+This document outlines the conventions, patterns, and lessons learned during the development of the
+Worker Maintainer project. Use this as a reference for future development and to onboard new
+contributors.
 
 ## Project Structure
 
@@ -8,9 +10,9 @@ This document outlines the conventions, patterns, and lessons learned during the
 
 - Place all Mastra-related code in `src/mastra/` directory
 - Organize by component type:
-  - Agents: `src/mastra/agents/`
-  - Tools: `src/mastra/tools/`
-  - Workflows: `src/mastra/workflows/`
+    - Agents: `src/mastra/agents/`
+    - Tools: `src/mastra/tools/`
+    - Workflows: `src/mastra/workflows/`
 - Keep test files with `test-` prefix in `src/` directory
 - Use index files to export components from each directory
 
@@ -27,7 +29,9 @@ This document outlines the conventions, patterns, and lessons learned during the
 
 **ALWAYS use this approach unless you have a specific reason to use MCP servers.**
 
-Tools should be implemented directly as Mastra tools using the `createTool` function from `@mastra/core/tools`. This is the simplest and most efficient approach that should be used for most use cases.
+Tools should be implemented directly as Mastra tools using the `createTool` function from
+`@mastra/core/tools`. This is the simplest and most efficient approach that should be used for most
+use cases.
 
 Key characteristics:
 
@@ -45,24 +49,20 @@ import { z } from "zod";
 
 // Implement core functionality as standalone functions
 export const buildDockerImage = async (dockerfilePath, imageName, platform) => {
-  // Implementation...
+    // Implementation...
 };
 
 // Export as a tool for use with Mastra
 export const dockerBuildTool = createTool({
-  id: "Docker Build",
-  inputSchema: z.object({
-    // Schema definition...
-  }),
-  description: "Builds a Docker image from a Dockerfile",
-  execute: async ({ context }) => {
-    // Call the core function with context parameters
-    return await buildDockerImage(
-      context.dockerfilePath,
-      context.imageName,
-      context.platform
-    );
-  },
+    id: "Docker Build",
+    inputSchema: z.object({
+        // Schema definition...
+    }),
+    description: "Builds a Docker image from a Dockerfile",
+    execute: async ({ context }) => {
+        // Call the core function with context parameters
+        return await buildDockerImage(context.dockerfilePath, context.imageName, context.platform);
+    },
 });
 ```
 
@@ -83,7 +83,8 @@ tools: {
 
 ### MCP Server Integration (ONLY FOR SPECIFIC CASES)
 
-**DO NOT use this approach unless you need to run tools in a separate process or integrate with external MCP servers.**
+**DO NOT use this approach unless you need to run tools in a separate process or integrate with
+external MCP servers.**
 
 MCP (Model Context Protocol) servers should only be used when:
 
@@ -102,15 +103,15 @@ When using external MCP servers (like the GitHub server), configure them in the 
 
 ```typescript
 const mcp = new MCPConfiguration({
-  servers: {
-    github: {
-      command: "npx",
-      args: ["-y", "@modelcontextprotocol/server-github"],
-      env: {
-        /* environment variables */
-      },
+    servers: {
+        github: {
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            env: {
+                /* environment variables */
+            },
+        },
     },
-  },
 });
 ```
 
@@ -118,47 +119,117 @@ const mcp = new MCPConfiguration({
 
 When working with the GitHub MCP server specifically:
 
-1. **GitHub Personal Access Token**: Always store GitHub tokens in `.env.development` with the name `GITHUB_PERSONAL_ACCESS_TOKEN` and ensure it has appropriate repository permissions.
+1. **GitHub Personal Access Token**: Always store GitHub tokens in `.env.development` with the name
+   `GITHUB_PERSONAL_ACCESS_TOKEN` and ensure it has appropriate repository permissions.
 
-2. **MCP Server Configuration**: Configure the GitHub MCP server with the proper command and arguments based on your operating system:
+2. **MCP Server Configuration**: Configure the GitHub MCP server with the proper command and
+   arguments based on your operating system:
 
-   **For Windows:**
+    **For Windows:**
 
-   ```typescript
-   const githubMCP = new MCPConfiguration({
-     id: "github-server-agent",
-     servers: {
-       github: {
-         command: "cmd",
-         args: ["/c", "npx -y @modelcontextprotocol/server-github"],
-         env: {
-           GITHUB_PERSONAL_ACCESS_TOKEN:
-             process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
-         },
-       },
-     },
-   });
-   ```
+    ```typescript
+    const githubMCP = new MCPConfiguration({
+        id: "github-server-agent",
+        servers: {
+            github: {
+                command: "cmd",
+                args: ["/c", "npx -y @modelcontextprotocol/server-github"],
+                env: {
+                    GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
+                },
+            },
+        },
+    });
+    ```
 
-   **For Mac/Linux:**
+    **For Mac/Linux:**
 
-   ```typescript
-   const githubMCP = new MCPConfiguration({
-     id: "github-server-agent",
-     servers: {
-       github: {
-         command: "npx",
-         args: ["-y", "@modelcontextprotocol/server-github"],
-         env: {
-           GITHUB_PERSONAL_ACCESS_TOKEN:
-             process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
-         },
-       },
-     },
-   });
-   ```
+    ```typescript
+    const githubMCP = new MCPConfiguration({
+        id: "github-server-agent",
+        servers: {
+            github: {
+                command: "npx",
+                args: ["-y", "@modelcontextprotocol/server-github"],
+                env: {
+                    GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
+                },
+            },
+        },
+    });
+    ```
 
 ## Agent Architecture
+
+### Agent-as-Tool Pattern (REQUIRED)
+
+When one agent needs to use another agent, always follow the agent-as-tool pattern:
+
+1. **Create a specialized agent creation function**:
+
+    - Define a function in the agent file that creates and returns the agent
+    - Example: `createRepositoryRepairAgent()` in `repository-repair-agent.ts`
+
+2. **Create a tool that uses this agent directly**:
+
+    - Import the agent creation function in your tool file
+    - Create the agent instance within the tool's execute function
+    - Use the agent directly by calling its generate() method
+    - Process the agent's response and return a structured result
+
+3. **Never use wrapper functions that internally create and use agents**:
+
+    - AVOID pattern: `repairRepository(repoPath, errorReport)` that internally creates and uses an
+      agent
+    - PREFERRED pattern: Tool creates and directly uses the agent instance
+
+4. **Return clear, structured results from tools**:
+    - Extract and format relevant information from the agent's response
+    - Use consistent property naming across tools
+
+Example of the correct agent-as-tool pattern:
+
+```typescript
+// In repository-repair-tool.ts
+import { createTool } from "@mastra/core/tools";
+import { createRepositoryRepairAgent } from "../agents/repository-repair-agent.js";
+
+export const repositoryRepairTool = createTool({
+    id: "Repository Repair",
+    // ...schema and description...
+    execute: async ({ context }) => {
+        try {
+            // Create the agent directly
+            const repairAgent = await createRepositoryRepairAgent();
+
+            // Generate prompt
+            const prompt = `...${context.repository}...${context.errors}...`;
+
+            // Use the agent directly
+            const agentResponse = await repairAgent.generate(prompt);
+
+            // Process the response
+            const fixes = extractFixes(agentResponse.text);
+
+            // Return structured result
+            return {
+                success: true,
+                fixes: fixes,
+                // ...other properties...
+            };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    },
+});
+```
+
+This pattern provides several benefits:
+
+- Clearer separation of concerns
+- Explicit agent creation and usage
+- Better testability
+- More consistent with Mastra's recommended patterns
 
 ### Component Communication Patterns
 
@@ -166,32 +237,32 @@ When implementing agent workflows with multiple components:
 
 1. **Validator-Repair Pattern**:
 
-   - Validator agents should use tool interfaces to request repairs
-   - Repair tools should connect to specialized repair agents
-   - Each component should have a single responsibility
-   - Use clear signaling between components for next actions
+    - Validator agents should use tool interfaces to request repairs
+    - Repair tools should connect to specialized repair agents
+    - Each component should have a single responsibility
+    - Use clear signaling between components for next actions
 
 2. **Tool Response Structure**:
 
-   - Always include a `success` boolean flag
-   - Return rich metadata needed for subsequent steps
-   - Use consistent property naming across tools
-   - Signal when additional actions are required
-   - Example:
-     ```typescript
-     return {
-       success: true,
-       // Additional metadata for next steps
-       needsNextStep: true,
-       sourcePath: context.inputPath,
-     };
-     ```
+    - Always include a `success` boolean flag
+    - Return rich metadata needed for subsequent steps
+    - Use consistent property naming across tools
+    - Signal when additional actions are required
+    - Example:
+        ```typescript
+        return {
+            success: true,
+            // Additional metadata for next steps
+            needsNextStep: true,
+            sourcePath: context.inputPath,
+        };
+        ```
 
 3. **Multiple Agent Coordination**:
-   - Use separation of concerns between specialized agents
-   - Orchestrator agents focus on coordination and decision-making
-   - Worker agents focus on specific tasks (validation, repair)
-   - Maintain clear communication interfaces between them
+    - Use separation of concerns between specialized agents
+    - Orchestrator agents focus on coordination and decision-making
+    - Worker agents focus on specific tasks (validation, repair)
+    - Maintain clear communication interfaces between them
 
 ## Git Operations
 
@@ -199,14 +270,16 @@ When implementing agent workflows with multiple components:
 
 We've created a robust Git checkout system with the following features:
 
-- **Direct Git Command Execution**: We use Node.js's `execSync` with proper error handling, timeouts, and output capturing.
-- **Auto-retry with Organization Fallback**: If a repository is not found in the specified organization, we automatically try with the "runpod-workers" organization as fallback.
+- **Direct Git Command Execution**: We use Node.js's `execSync` with proper error handling,
+  timeouts, and output capturing.
+- **Auto-retry with Organization Fallback**: If a repository is not found in the specified
+  organization, we automatically try with the "runpod-workers" organization as fallback.
 - **Timeout Controls**: Short timeout values (5s) prevent hanging on non-existent repositories.
 - **Content Verification**: After checkout, we list directory contents to verify success.
 - **Path Conventions**: Repositories are cloned to:
-  ```
-  <project_root>/repos/<organization>-<repository_name>
-  ```
+    ```
+    <project_root>/repos/<organization>-<repository_name>
+    ```
 
 ### Error Handling Best Practices
 
@@ -220,7 +293,8 @@ We've created a robust Git checkout system with the following features:
 
 ### Cross-Platform Support
 
-The Docker tools provide cross-platform compatibility, ensuring proper operation on both Windows and Linux:
+The Docker tools provide cross-platform compatibility, ensuring proper operation on both Windows and
+Linux:
 
 - Windows systems use manual directory scanning to find Dockerfiles
 - Linux systems use the `find` command with a fallback to manual scanning if it fails
@@ -233,7 +307,8 @@ When dealing with Docker container logs:
 - Always consider containers with no logs as valid (not an error condition)
 - Check the success status of log retrieval operations, not the presence of logs
 - Use `lineCount` to indicate empty logs rather than treating them as failures
-- Include helpful messages in the report for empty logs (e.g., "No logs produced by container or logs were empty. This is not an error.")
+- Include helpful messages in the report for empty logs (e.g., "No logs produced by container or
+  logs were empty. This is not an error.")
 
 ## Environment Configuration
 
@@ -248,8 +323,9 @@ When dealing with Docker container logs:
 
 - Configure model parameters in the agent creation files
 - Use appropriate model identifiers for each AI provider:
-  - For Anthropic: Use correct versioned identifiers (e.g., `claude-3-sonnet-20240229`, `claude-3-7-sonnet-latest`)
-  - For OpenAI: Use their model naming format (e.g., `gpt-4o`)
+    - For Anthropic: Use correct versioned identifiers (e.g., `claude-3-sonnet-20240229`,
+      `claude-3-7-sonnet-latest`)
+    - For OpenAI: Use their model naming format (e.g., `gpt-4o`)
 - Verify model availability with your API key before deployment
 
 ## Mastra Integration
@@ -260,14 +336,14 @@ When connecting workflows with agents:
 
 1. **Create a Tool Wrapper**:
 
-   - Import the workflow directly in the tool file (avoid circular imports)
-   - Execute the workflow using `createRun()` and `start()`
-   - Extract and format the report from workflow results
+    - Import the workflow directly in the tool file (avoid circular imports)
+    - Execute the workflow using `createRun()` and `start()`
+    - Extract and format the report from workflow results
 
 2. **Access the Mastra Instance**:
-   - Get it via the `mastra` parameter in the tool's execute function
-   - Don't import the mastra instance directly in tool files
-   - Use it to access workflows: `mastra.getWorkflow("workflowName")`
+    - Get it via the `mastra` parameter in the tool's execute function
+    - Don't import the mastra instance directly in tool files
+    - Use it to access workflows: `mastra.getWorkflow("workflowName")`
 
 Example of a tool that executes a workflow:
 
@@ -305,9 +381,11 @@ export const dockerValidationTool = createTool({
 
 When designing workflow steps:
 
-1. **Give Clear IDs**: Use descriptive step IDs (e.g., `checkout`, `build`, `report`) that match how you'll access them in results
+1. **Give Clear IDs**: Use descriptive step IDs (e.g., `checkout`, `build`, `report`) that match how
+   you'll access them in results
 2. **Handle Empty Outputs**: Consider empty results like logs as valid rather than errors
-3. **Use Report Pattern**: Create a dedicated report generation step that summarizes all previous steps
+3. **Use Report Pattern**: Create a dedicated report generation step that summarizes all previous
+   steps
 
 ### Tool Implementation
 
@@ -315,31 +393,31 @@ Tools in Mastra should follow these patterns:
 
 1. **Tool Creation**:
 
-   - Use `createTool` from `@mastra/core/tools`
-   - Implement tools in a dedicated file (e.g., `git-tools.ts`, `docker-tools.ts`)
-   - Export both the core functions and the Mastra tool
+    - Use `createTool` from `@mastra/core/tools`
+    - Implement tools in a dedicated file (e.g., `git-tools.ts`, `docker-tools.ts`)
+    - Export both the core functions and the Mastra tool
 
 2. **Schema Definition**:
 
-   - Use Zod for schema validation
-   - Provide clear descriptions for each field
-   - Match UI expectations in the schema (separate fields vs combined values)
+    - Use Zod for schema validation
+    - Provide clear descriptions for each field
+    - Match UI expectations in the schema (separate fields vs combined values)
 
 3. **Function Execution**:
 
-   - Implement core functionality in a standalone function
-   - Have the tool's execute function call that standalone function
-   - Provide detailed logging for debugging
+    - Implement core functionality in a standalone function
+    - Have the tool's execute function call that standalone function
+    - Provide detailed logging for debugging
 
 4. **Error Handling**:
 
-   - Return objects with a `success` property to indicate status
-   - Include error messages for failures
-   - Log detailed information to help with debugging
+    - Return objects with a `success` property to indicate status
+    - Include error messages for failures
+    - Log detailed information to help with debugging
 
 5. **Tool Registration**:
-   - Register tools in an agent's configuration
-   - Make sure tool IDs match the UI expectation
+    - Register tools in an agent's configuration
+    - Make sure tool IDs match the UI expectation
 
 ### Workflow Integration
 
@@ -361,7 +439,7 @@ const result = await buildDockerImage(dockerfilePath, imageTag, platform);
 
 ```typescript
 if (!result.success) {
-  throw new Error(result.error || "Failed to build Docker image");
+    throw new Error(result.error || "Failed to build Docker image");
 }
 ```
 
@@ -374,10 +452,10 @@ if (!result.success) {
 - Register all test scripts in `package.json` under "scripts" section
 - Use consistent naming patterns: `test:repair-tool`, `test:integration`
 - Create separate tests for:
-  - Direct function tests
-  - Tool interface tests
-  - Agent tests
-  - Integration tests between components
+    - Direct function tests
+    - Tool interface tests
+    - Agent tests
+    - Integration tests between components
 
 ### Direct Function Testing
 
@@ -430,12 +508,12 @@ if (!result.success) {
 
 ```typescript
 const options = {
-  encoding: "utf8",
-  stdio: "pipe",
-  shell: true,
-  windowsHide: true,
-  maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-  timeout: 5000, // 5 second timeout
+    encoding: "utf8",
+    stdio: "pipe",
+    shell: true,
+    windowsHide: true,
+    maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+    timeout: 5000, // 5 second timeout
 };
 ```
 
@@ -484,8 +562,16 @@ Potential areas for improvement:
 
 ## Conclusion
 
-These conventions should guide future development on the Worker Maintainer project. They represent lessons learned through practical implementation and should evolve as the project grows.
+These conventions should guide future development on the Worker Maintainer project. They represent
+lessons learned through practical implementation and should evolve as the project grows.
 
-Remember that these conventions are not fixed rules - they should be continuously improved as new patterns and better practices emerge.
+Remember that these conventions are not fixed rules - they should be continuously improved as new
+patterns and better practices emerge.
 
-**IMPORTANT**: When creating new tools, always follow the direct tool integration approach using `createTool` unless you have a specific reason to use MCP servers. Consistency in implementation patterns is critical for maintainability.
+**IMPORTANT**: When creating new tools, always follow the direct tool integration approach using
+`createTool` unless you have a specific reason to use MCP servers. Consistency in implementation
+patterns is critical for maintainability.
+
+**REQUIRED**: For agent-to-agent communication, always follow the agent-as-tool pattern where tools
+directly create and use agent instances rather than calling functions that internally create and use
+agents. This ensures clear separation of concerns and better maintainability.
