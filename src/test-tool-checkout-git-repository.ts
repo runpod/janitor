@@ -5,7 +5,7 @@ async function main() {
 		console.log("Starting repository checkout...");
 
 		// Get repository name from command line or use default
-		const repoName = process.argv[2] || "runpod-workers/worker-stable_diffusion_v2";
+		const repoName = process.argv[2] || "TimPietrusky/worker-basic";
 
 		// Test checkout of a repository
 		const result = await checkoutGitRepository(repoName);

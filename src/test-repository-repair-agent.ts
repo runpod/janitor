@@ -11,20 +11,6 @@ async function main() {
 		// Define the repository path
 		const repoPath = path.join(process.cwd(), "repos", "TimPietrusky-worker-basic");
 
-		// Delete the repo directory if it exists to ensure a clean start
-		console.log(`Checking if repo directory exists: ${repoPath}`);
-		try {
-			const stats = await fs.stat(repoPath);
-			if (stats.isDirectory()) {
-				console.log(`Deleting existing repo directory: ${repoPath}`);
-				await fs.rm(repoPath, { recursive: true, force: true });
-				console.log("Repository directory deleted successfully");
-			}
-		} catch (err) {
-			// Directory doesn't exist, which is fine
-			console.log("Repository directory doesn't exist yet, will be created fresh");
-		}
-
 		// Get the repository repair agent
 		const agent: Agent = mastra.getAgent("repositoryRepairAgent");
 		if (!agent) {

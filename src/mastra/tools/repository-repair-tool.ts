@@ -3,7 +3,6 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 import { mastra } from "../..";
-import { repairOutputSchema } from "../agents/repository-repair-agent";
 
 // Define the return type for the execute function
 type RepairToolResult = {
@@ -38,7 +37,7 @@ export const repositoryRepairTool = createTool({
 		attemptCount: z.number().optional().describe("Number of repair attempts so far"),
 	}),
 	description: "Attempts to repair a repository that failed validation",
-	execute: async ({ context }): Promise<RepairToolResult> => {
+	execute: async ({ context }): Promise<any> => {
 		console.log("use the repositoryRepairTool to fix a problem");
 
 		try {
@@ -66,13 +65,12 @@ export const repositoryRepairTool = createTool({
 
 			// Generate the prompt for the repair agent
 			const prompt = `
-I need your help fixing a Docker build failure in a repository.
+The following repository failed validation because of a at least one error:
 
 Repository: ${context.repository}
+Repository Path: ${context.repoPath}
 Build Status: ${context.buildStatus}
 Container Status: ${context.containerStatus}
-
-The repository is located at: ${context.repoPath}
 
 Error Summary:
 ${context.errors.join("\n")}
@@ -81,76 +79,54 @@ Build Logs:
 ${context.logs}
 ${customPrompt}
 
-Please analyze these errors and fix the issues in the repository. Start by exploring the
-repository structure, identifying Dockerfiles, and understanding the build process.
-Then diagnose the problems and apply appropriate fixes.
-
-Return a structured output with your analysis, list of fixes made, and whether you were successful.
+Please let me know which changes you made.
 `;
 
 			// Run the agent to repair the repository using structured output
 			console.log("\n=== REPAIR AGENT STARTING ===\n");
-			console.log(prompt);
 
-			const agentResponse = await agent.generate(prompt, {
-				output: repairOutputSchema,
+			const repairResponse = await agent.generate(prompt, {
+				maxSteps: 10,
 			});
+			console.log("\n============= REPAIR AGENT RESPONSE =============");
+			console.log(repairResponse.text);
+			console.log("================================================\n");
 
-			// Log the agent's response details
-			console.log("\n=== REPAIR AGENT RESPONSE ===\n");
-			// For structured output, we need to log the object directly
-			console.log(JSON.stringify(agentResponse.object, null, 2));
-			console.log("\n=== END OF REPAIR AGENT RESPONSE ===\n");
+			// const result = repairResponse.text;
 
-			// Get the structured output directly
-			const result: z.infer<typeof repairOutputSchema> = agentResponse.object;
+			// console.log("is this working?");
 
-			// Log the structured result
-			console.log("\n=== STRUCTURED REPAIR RESULTS ===");
-			console.log(`Success: ${result.success}`);
-			console.log(`Fixes made: ${result.fixes.length}`);
-			result.fixes.forEach((fix: { file: string; description: string }, index: number) => {
-				console.log(`  ${index + 1}. ${fix.file}: ${fix.description}`);
-			});
-			console.log("=================================\n");
+			// const response: RepairToolResult = {
+			// 	success: true,
+			// 	repaired: true,
+			// 	fixes: [...result.fixes],
+			// 	analysis: result.analysis,
+			// 	// We don't have text property when using structured output, so use the analysis instead
+			// 	response: result.analysis,
+			// 	needsRevalidation: result.success,
+			// 	repoPath: context.repoPath,
+			// 	repository: context.repository,
+			// 	originalErrors: context.errors,
+			// };
 
-			const response: RepairToolResult = {
-				success: true,
-				repaired: result.success && result.fixes.length > 0,
-				fixes: [...result.fixes],
-				analysis: result.analysis,
-				// We don't have text property when using structured output, so use the analysis instead
-				response: result.analysis,
-				needsRevalidation: result.success,
-				repoPath: context.repoPath,
-				repository: context.repository,
-				originalErrors: context.errors,
-			};
+			// console.log("\n=== REPAIR COMPLETED ===");
+			// console.log(`Success: ${response.success}`);
+			// console.log(`Repaired: ${response.repaired}`);
+			// console.log(`Fixes made: ${response.fixes.length}`);
+			// console.log(`Needs revalidation: ${response.needsRevalidation}`);
+			// console.log("=========================\n");
 
-			console.log("\n=== REPAIR COMPLETED ===");
-			console.log(`Success: ${response.success}`);
-			console.log(`Repaired: ${response.repaired}`);
-			console.log(`Fixes made: ${response.fixes.length}`);
-			console.log(`Needs revalidation: ${response.needsRevalidation}`);
-			console.log("=========================\n");
+			// if (response.success) {
+			// 	console.log("\nIMPORTANT: REPOSITORY MODIFIED - RE-VALIDATION REQUIRED");
+			// 	console.log(
+			// 		"The validator agent should now revalidate the repository to check if fixes resolved the issues.\n"
+			// 	);
+			// }
 
-			if (response.success) {
-				console.log("\nIMPORTANT: REPOSITORY MODIFIED - RE-VALIDATION REQUIRED");
-				console.log(
-					"The validator agent should now revalidate the repository to check if fixes resolved the issues.\n"
-				);
-			}
-
-			return response;
+			return repairResponse.text;
 		} catch (error: any) {
 			console.error(`Error repairing repository: ${error.message}`);
-			return {
-				success: false,
-				repaired: false,
-				error: String(error),
-				needsRevalidation: false,
-				fixes: [], // Add empty fixes array to satisfy type
-			};
+			return `Error repairing repository: ${error.message}`;
 		}
 	},
 });
