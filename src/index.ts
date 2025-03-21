@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 
-import { mastra } from "./mastra/index.js";
+import { mastra } from "./mastra/index";
 
 // Load environment variables
 dotenv.config({ path: ".env.development" });
@@ -14,14 +14,14 @@ export {
 	fileReadTool,
 	fileSearchTool,
 	listDirectoryTool,
-} from "./mastra/tools/file-system-tools.js";
+} from "./mastra/tools/file-system-tools";
 
 // Add repository repair agent from Mastra
 export {
 	createRepositoryRepairAgent,
 	fixSchema,
 	repairOutputSchema,
-} from "./mastra/agents/repository-repair-agent.js";
+} from "./mastra/agents/repository-repair-agent";
 
 async function main() {
 	try {

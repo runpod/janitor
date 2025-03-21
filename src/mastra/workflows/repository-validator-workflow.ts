@@ -191,7 +191,7 @@ const dockerBuild = new Step({
 			console.log(`Platform: ${platform}`);
 
 			// Import and use the buildDockerImage function directly
-			const { buildDockerImage } = await import("../tools/docker-tools.js");
+			const { buildDockerImage } = await import("../tools/docker-tools");
 
 			// Build the Docker image
 			const buildResult = await buildDockerImage(dockerfilePath, imageTag, platform);
@@ -241,9 +241,7 @@ const containerTesting = new Step({
 			console.log(`Starting container ${containerName} from image ${buildResult.imageId}`);
 
 			// Import the docker tools
-			const { runDockerContainer, cleanupContainer } = await import(
-				"../tools/docker-tools.js"
-			);
+			const { runDockerContainer, cleanupContainer } = await import("../tools/docker-tools");
 
 			// Run the container
 			const runResult = await runDockerContainer(buildResult.imageId, containerName);

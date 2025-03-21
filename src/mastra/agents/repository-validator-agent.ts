@@ -4,7 +4,7 @@ import { Agent } from "@mastra/core/agent";
 import { dockerValidationTool } from "../tools/docker-validation-tool";
 import { gitCheckoutTool } from "../tools/git-tools";
 import { createRepositoryPRTool } from "../tools/repository-pr-tool";
-import { repositoryRepairTool } from "../tools/repository-repair-tool.js";
+import { repositoryRepairTool } from "../tools/repository-repair-tool";
 
 // Define the repository validator agent
 export const repositoryValidatorAgent = new Agent({

@@ -8,7 +8,7 @@ import {
 	fileReadTool,
 	fileSearchTool,
 	listDirectoryTool,
-} from "../tools/file-system-tools.js";
+} from "../tools/file-system-tools";
 
 // Load environment variables
 dotenv.config({ path: ".env.development" });
@@ -85,3 +85,6 @@ export const createRepositoryRepairAgent = () => {
 
 	return agent;
 };
+
+// Initialize and export the agent
+export const repositoryRepairAgent = createRepositoryRepairAgent();

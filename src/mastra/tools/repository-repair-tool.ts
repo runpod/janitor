@@ -1,10 +1,23 @@
+import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import {
-	createRepositoryRepairAgent,
-	repairOutputSchema,
-} from "../agents/repository-repair-agent.js";
+import { mastra } from "../..";
+import { repairOutputSchema } from "../agents/repository-repair-agent";
+
+// Define the return type for the execute function
+type RepairToolResult = {
+	success: boolean;
+	repaired: boolean;
+	fixes: any[]; // Make fixes non-optional
+	analysis?: string;
+	response?: string;
+	needsRevalidation: boolean;
+	repoPath?: string;
+	repository?: string;
+	originalErrors?: string[];
+	error?: string;
+};
 
 /**
  * Repository Repair Tool - Allows the Validator Agent to request repairs for failed repositories
@@ -25,7 +38,9 @@ export const repositoryRepairTool = createTool({
 		attemptCount: z.number().optional().describe("Number of repair attempts so far"),
 	}),
 	description: "Attempts to repair a repository that failed validation",
-	execute: async ({ context }) => {
+	execute: async ({ context }): Promise<RepairToolResult> => {
+		console.log("use the repositoryRepairTool to fix a problem");
+
 		try {
 			console.log(`Initiating repair for repository: ${context.repository}`);
 			console.log(`Repository path: ${context.repoPath}`);
@@ -46,8 +61,8 @@ export const repositoryRepairTool = createTool({
 			}
 
 			// Create the Repository Repair Agent
-			console.log("Creating Repository Repair Agent...");
-			const repairAgent = await createRepositoryRepairAgent();
+			console.log("Creating Repository Repair Agent inside tool...");
+			const agent: Agent = mastra.getAgent("repositoryRepairAgent");
 
 			// Generate the prompt for the repair agent
 			const prompt = `
@@ -75,7 +90,9 @@ Return a structured output with your analysis, list of fixes made, and whether y
 
 			// Run the agent to repair the repository using structured output
 			console.log("\n=== REPAIR AGENT STARTING ===\n");
-			const agentResponse = await repairAgent.generate(prompt, {
+			console.log(prompt);
+
+			const agentResponse = await agent.generate(prompt, {
 				output: repairOutputSchema,
 			});
 
@@ -86,21 +103,21 @@ Return a structured output with your analysis, list of fixes made, and whether y
 			console.log("\n=== END OF REPAIR AGENT RESPONSE ===\n");
 
 			// Get the structured output directly
-			const result = agentResponse.object;
+			const result: z.infer<typeof repairOutputSchema> = agentResponse.object;
 
 			// Log the structured result
 			console.log("\n=== STRUCTURED REPAIR RESULTS ===");
 			console.log(`Success: ${result.success}`);
 			console.log(`Fixes made: ${result.fixes.length}`);
-			result.fixes.forEach((fix, index) => {
+			result.fixes.forEach((fix: { file: string; description: string }, index: number) => {
 				console.log(`  ${index + 1}. ${fix.file}: ${fix.description}`);
 			});
 			console.log("=================================\n");
 
-			const response = {
+			const response: RepairToolResult = {
 				success: true,
 				repaired: result.success && result.fixes.length > 0,
-				fixes: result.fixes,
+				fixes: [...result.fixes],
 				analysis: result.analysis,
 				// We don't have text property when using structured output, so use the analysis instead
 				response: result.analysis,
@@ -132,6 +149,7 @@ Return a structured output with your analysis, list of fixes made, and whether y
 				repaired: false,
 				error: String(error),
 				needsRevalidation: false,
+				fixes: [], // Add empty fixes array to satisfy type
 			};
 		}
 	},

@@ -1,12 +1,6 @@
-import { createRepositoryPRAgent } from "./repository-pr-agent.js";
-import { createRepositoryRepairAgent } from "./repository-repair-agent.js";
-import { repositoryValidatorAgent } from "./repository-validator-agent.js";
-
-// Create the repository repair agent
-const repositoryRepairAgent = createRepositoryRepairAgent();
-
-// Create the repository PR agent
-const repositoryPRAgent = createRepositoryPRAgent();
+import { repositoryPRAgent } from "./repository-pr-agent";
+import { repositoryRepairAgent } from "./repository-repair-agent";
+import { repositoryValidatorAgent } from "./repository-validator-agent";
 
 // Export all agents
 export { repositoryPRAgent, repositoryRepairAgent, repositoryValidatorAgent };

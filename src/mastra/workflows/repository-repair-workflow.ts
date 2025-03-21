@@ -2,10 +2,7 @@ import { Step, Workflow } from "@mastra/core/workflows";
 import path from "path";
 import { z } from "zod";
 
-import {
-	createRepositoryRepairAgent,
-	repairOutputSchema,
-} from "../agents/repository-repair-agent.js";
+import { createRepositoryRepairAgent, repairOutputSchema } from "../agents/repository-repair-agent";
 
 // Define the validation result type
 interface ValidationResult {
@@ -78,7 +75,7 @@ const repairRepositoriesStep = new Step({
 		const failedRepositories = analyzeStepResult.failedRepositories;
 
 		// Create the repair agent once for all repairs
-		console.log("Creating Repository Repair Agent...");
+		console.log("Creating Repository Repair Agent inside workflow...");
 		const repairAgent = await createRepositoryRepairAgent();
 
 		// Process each failed repository
