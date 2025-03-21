@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { createRepositoryPRAgent, prResultSchema } from "../agents/repository-pr-agent";
+import { mastra } from "../..";
 
 /**
  * Repository PR Tool - Creates a pull request for a fixed repository
@@ -35,7 +35,7 @@ export const createRepositoryPRTool = createTool({
 			.describe("Results of revalidation after fixes"),
 	}),
 	description: "Creates or updates a Pull Request for a repository that has been fixed",
-	execute: async ({ context }) => {
+	execute: async ({ context }): Promise<any> => {
 		try {
 			console.log(`Initiating PR creation for repository: ${context.repository}`);
 			console.log(`Repository path: ${context.repositoryPath}`);
@@ -52,7 +52,14 @@ export const createRepositoryPRTool = createTool({
 
 			// Create the Repository PR Agent
 			console.log("Creating Repository PR Agent...");
-			const repositoryPRAgent = await createRepositoryPRAgent();
+			const agent = mastra.getAgent("repositoryPRAgent");
+			if (!agent) {
+				console.error("Repository PR Agent not found!");
+				return {
+					success: false,
+					message: "Repository PR Agent not found!",
+				};
+			}
 
 			// Prepare the message for the agent with all necessary details
 			const messageToAgent = `
@@ -76,65 +83,64 @@ Return a structured output with the PR details including whether it was successf
 
 			// Call the agent to handle the PR creation with structured output
 			console.log("Calling Repository PR Agent to create the PR...");
-			const agentResponse = await repositoryPRAgent.generate(messageToAgent, {
-				output: prResultSchema,
-			});
+			const agentResponse = await agent.generate(messageToAgent);
+
+			console.log("\n============= PR AGENT RESPONSE =============");
+			console.log(agentResponse.text);
+			console.log("================================================\n");
 
 			// Access the structured output directly
-			const result = agentResponse.object;
+			// const result = agentResponse.text;
 
-			// Log the structured result
-			console.log("\n=== STRUCTURED PR RESULTS ===");
-			console.log(`Success: ${result.success}`);
-			console.log(`PR Exists: ${result.prExists}`);
-			console.log(`PR Number: ${result.prNumber || "Not available"}`);
-			console.log(`PR URL: ${result.prUrl || "Not available"}`);
-			console.log(`Branch: ${result.branch}`);
-			console.log(`Summary: ${result.summary}`);
-			console.log("===============================\n");
+			// // Log the structured result
+			// console.log("\n=== STRUCTURED PR RESULTS ===");
+			// console.log(`Success: ${result.success}`);
+			// console.log(`PR Exists: ${result.prExists}`);
+			// console.log(`PR Number: ${result.prNumber || "Not available"}`);
+			// console.log(`PR URL: ${result.prUrl || "Not available"}`);
+			// console.log(`Branch: ${result.branch}`);
+			// console.log(`Summary: ${result.summary}`);
+			// console.log("===============================\n");
 
-			if (result.success) {
-				console.log("\n=== PR CREATION COMPLETED ===");
-				console.log(`Success: ${result.success}`);
+			// if (result.success) {
+			// 	console.log("\n=== PR CREATION COMPLETED ===");
+			// 	console.log(`Success: ${result.success}`);
 
-				if (result.prNumber) {
-					console.log(`PR Number: ${result.prNumber}`);
-				}
+			// 	if (result.prNumber) {
+			// 		console.log(`PR Number: ${result.prNumber}`);
+			// 	}
 
-				if (result.prUrl) {
-					console.log(`PR URL: ${result.prUrl}`);
-				}
+			// 	if (result.prUrl) {
+			// 		console.log(`PR URL: ${result.prUrl}`);
+			// 	}
 
-				console.log("=============================\n");
+			// 	console.log("=============================\n");
 
-				return {
-					success: true,
-					message: result.prExists
-						? "Pull request successfully updated"
-						: "Pull request successfully created",
-					prCreated: true,
-					prNumber: result.prNumber,
-					pullRequestUrl: result.prUrl,
-					isUpdate: result.prExists,
-					summary: result.summary,
-					branch: result.branch,
-				};
-			}
+			// 	return {
+			// 		success: true,
+			// 		message: result.prExists
+			// 			? "Pull request successfully updated"
+			// 			: "Pull request successfully created",
+			// 		prCreated: true,
+			// 		prNumber: result.prNumber,
+			// 		pullRequestUrl: result.prUrl,
+			// 		isUpdate: result.prExists,
+			// 		summary: result.summary,
+			// 		branch: result.branch,
+			// 	};
+			// }
 
-			console.error("PR creation failed. See agent response for details:", result.summary);
-			return {
-				success: false,
-				message: "PR creation failed. See summary for details.",
-				prCreated: false,
-				summary: result.summary,
-			};
+			// console.error("PR creation failed. See agent response for details:", result.summary);
+			// return {
+			// 	success: false,
+			// 	message: "PR creation failed. See summary for details.",
+			// 	prCreated: false,
+			// 	summary: result.summary,
+			// };
+			return agentResponse.text;
 		} catch (error: any) {
 			console.error(`Error creating repository PR: ${error.message}`);
-			return {
-				success: false,
-				message: `Failed to create PR: ${error instanceof Error ? error.message : String(error)}`,
-				prCreated: false,
-			};
+			return `Failed to create PR: ${error instanceof Error ? error.message : String(error)}`;
 		}
 	},
 });

@@ -87,6 +87,7 @@ Please let me know which changes you made.
 
 			const repairResponse = await agent.generate(prompt, {
 				maxSteps: 10,
+				maxRetries: 5,
 			});
 			console.log("\n============= REPAIR AGENT RESPONSE =============");
 			console.log(repairResponse.text);

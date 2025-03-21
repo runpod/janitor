@@ -1,12 +1,10 @@
-import { z } from "zod";
-
-import { createRepositoryPRAgent } from "./mastra/agents/repository-pr-agent";
+import { mastra } from "./mastra";
 
 async function main() {
 	try {
 		// Create the repository PR agent directly
 		console.log("Creating Repository PR Agent...");
-		const agent = await createRepositoryPRAgent();
+		const agent = mastra.getAgent("repositoryPRAgent");
 		if (!agent) {
 			console.error("Failed to create Repository PR Agent!");
 			return;
@@ -58,34 +56,24 @@ Return a structured output with the PR details after you've created it.
 `;
 
 		// Request the PR creation
-		const response = await agent.generate(message, {
-			output: z.object({
-				success: z.boolean().describe("Whether the PR was successfully created"),
-				prExists: z.boolean().describe("Whether a PR for these changes already existed"),
-				prNumber: z.number().optional().describe("PR number if available"),
-				prUrl: z.string().optional().describe("URL to the pull request"),
-				branch: z.string().describe("Branch used for the PR"),
-				summary: z.string().describe("Summary of what was done"),
-			}),
-		});
+		const response = await agent.generate(message);
 
-		console.log("\nWaiting 3 seconds for agent to finish processing...");
-		await new Promise(resolve => setTimeout(resolve, 3000));
+		console.log(response.text);
 
-		// With structured output, we get the object directly
-		console.log("\nAgent Response (Structured Output):");
-		console.log(JSON.stringify(response.object, null, 2));
+		// // With structured output, we get the object directly
+		// console.log("\nAgent Response (Structured Output):");
+		// console.log(JSON.stringify(response.object, null, 2));
 
-		console.log("\nPR Creation Summary:");
-		console.log(response.object.summary);
+		// console.log("\nPR Creation Summary:");
+		// console.log(response.object.summary);
 
-		if (response.object.success) {
-			console.log(`\nSuccessfully created PR #${response.object.prNumber}`);
-			console.log(`PR URL: ${response.object.prUrl}`);
-			console.log(`Branch: ${response.object.branch}`);
-		} else {
-			console.log("\nFailed to create PR. See summary for details.");
-		}
+		// if (response.object.success) {
+		// 	console.log(`\nSuccessfully created PR #${response.object.prNumber}`);
+		// 	console.log(`PR URL: ${response.object.prUrl}`);
+		// 	console.log(`Branch: ${response.object.branch}`);
+		// } else {
+		// 	console.log("\nFailed to create PR. See summary for details.");
+		// }
 	} catch (error) {
 		console.error("Error running PR agent test:", error);
 	}

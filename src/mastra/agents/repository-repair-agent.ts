@@ -1,5 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { Agent } from "@mastra/core/agent";
+import { Memory } from "@mastra/memory";
 import dotenv from "dotenv";
 import { z } from "zod";
 
@@ -24,6 +25,16 @@ export const repairOutputSchema = z.object({
 	analysis: z.string().describe("Analysis of the issue and what needed to be fixed"),
 	fixes: z.array(fixSchema).describe("List of files fixed and how they were changed"),
 	success: z.boolean().describe("Whether fixes were successfully applied"),
+});
+
+// Initialize a simple memory to remember conversation history
+const memory = new Memory({
+	options: {
+		// Keep a few recent messages for context
+		lastMessages: 5,
+		// Enable semantic search to find similar issues
+		semanticRecall: true,
+	},
 });
 
 // Instructions for the repository repair agent
@@ -81,6 +92,7 @@ export const createRepositoryRepairAgent = () => {
 			fileSearchTool,
 			editFileTool,
 		},
+		memory, // Add memory to the agent
 	});
 
 	return agent;
