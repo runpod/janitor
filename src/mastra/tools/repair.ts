@@ -95,7 +95,7 @@ Build Logs:
 ${context.logs}
 ${customPrompt}
 
-Please let me know which changes you made.
+Please fix in the repo mentioned under "repository path". 
 `;
 
 				// Run the agent to repair the repository using structured output
@@ -104,6 +104,7 @@ Please let me know which changes you made.
 				const repairResponse = await agent.generate(prompt, {
 					maxSteps: 10,
 					maxRetries: 5,
+					// experimental_output: repairOutputSchema,
 				});
 				console.log("\n============= REPAIR AGENT RESPONSE =============");
 				console.log(repairResponse.text);

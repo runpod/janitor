@@ -84,7 +84,10 @@ Return a structured output with the PR details including whether it was successf
 
 				// Call the agent to handle the PR creation with structured output
 				console.log("Calling Repository PR Agent to create the PR...");
-				const agentResponse = await agent.generate(messageToAgent);
+				const agentResponse = await agent.generate(messageToAgent, {
+					maxSteps: 10,
+					maxRetries: 5,
+				});
 
 				console.log("\n============= PR AGENT RESPONSE =============");
 				console.log(agentResponse.text);
