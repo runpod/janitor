@@ -26,8 +26,8 @@ export const fixSchema = z.object({
 
 // Define the repair output schema
 export const repairOutputSchema = z.object({
-	analysis: z.string().describe("Analysis of the issue and what needed to be fixed"),
-	fixes: z.array(fixSchema).describe("List of files fixed and how they were changed"),
+	description: z.string().describe("Analysis of the issue and what needed to be fixed"),
+	files: z.array(fixSchema).describe("List of files fixed and how they were changed"),
 	success: z.boolean().describe("Whether fixes were successfully applied"),
 });
 
