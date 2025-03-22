@@ -9,12 +9,12 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",
-    "test:worker-maintainer": "tsx src/test-worker-maintainer.ts",
-    "test:repository-validator-workflow": "tsx src/test-repository-validator-workflow.ts",
-    "test:docker-validation-workflow": "tsx src/test-docker-validation-workflow.ts",
-    "test:tool-checkout-git-repository": "tsx src/test-tool-checkout-git-repository.ts",
-    "test:repository-pr-agent": "tsx src/test-repository-pr-agent.ts",
-    "test:repository-repair-agent": "tsx src/test-repository-repair-agent.ts"
+    "test:worker-maintainer": "tsx src/tests/test-worker-maintainer.ts",
+    "test:repository-validator-workflow": "tsx src/tests/test-repository-validator-workflow.ts",
+    "test:docker-validation-workflow": "tsx src/tests/test-docker-validation-workflow.ts",
+    "test:tool-checkout-git-repository": "tsx src/tests/test-tool-checkout-git-repository.ts",
+    "test:repository-pr-agent": "tsx src/tests/test-repository-pr-agent.ts",
+    "test:repository-repair-agent": "tsx src/tests/test-repository-repair-agent.ts"
   },
   "keywords": [
     "runpod",
