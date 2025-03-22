@@ -2,7 +2,7 @@ import { Agent } from "@mastra/core/agent";
 import fs from "fs/promises";
 import path from "path";
 
-import { mastra } from "./mastra/index";
+import { mastra } from "../mastra/index";
 
 async function main() {
 	try {

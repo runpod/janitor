@@ -1,7 +1,7 @@
 // Import crypto polyfill first to ensure crypto is available
-import "./mastra/utils/crypto-polyfill.js";
+import "../mastra/utils/crypto-polyfill.js";
 
-import { mastra } from "./mastra";
+import { mastra } from "../mastra/index.js";
 
 // Add debug logging to inspect the mastra object
 console.log("Docker Test - Mastra object type:", typeof mastra);

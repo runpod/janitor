@@ -1,4 +1,4 @@
-import { mastra } from "./mastra";
+import { mastra } from "../mastra";
 
 async function main() {
 	try {
