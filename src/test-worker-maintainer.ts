@@ -1,11 +1,29 @@
+// Import crypto polyfill first to ensure crypto is available
+import "./mastra/utils/crypto-polyfill.js";
+
 import fs from "fs/promises";
 import path from "path";
 
-import { mastra } from "./mastra/index";
+import { mastra } from "./mastra";
+
+// Add debug logging to inspect the mastra object
+console.log("Worker Test - Mastra object type:", typeof mastra);
+console.log(
+	"Worker Test - Mastra has getWorkflow method:",
+	typeof mastra.getWorkflow === "function"
+);
+// Access properties safely to avoid TypeScript errors
+console.log("Worker Test - Mastra keys:", Object.keys(mastra as any));
+console.log(
+	"Worker Test - Available methods:",
+	Object.getOwnPropertyNames(Object.getPrototypeOf(mastra))
+);
+
+console.log("Starting E2E worker maintainer test");
 
 async function main() {
 	try {
-		console.log("Starting E2E repository validator agent test");
+		console.log("Starting E2E worker maintainer test");
 
 		// Define the repository path
 		const repoPath = path.join(process.cwd(), "repos", "TimPietrusky-worker-basic");
@@ -25,20 +43,20 @@ async function main() {
 		}
 
 		// Get the repo validator agent
-		const agent = mastra.getAgent("repositoryValidatorAgent");
+		const agent = mastra.getAgent("workerMaintainer");
 		if (!agent) {
-			console.error("Repository Validator Agent not found!");
+			console.error("Worker Maintainer Agent not found!");
 			return;
 		}
 
-		console.log("Running repository validation with agent...");
+		console.log("Running worker maintainer with agent...");
 
-		const validationResponse = await agent.generate(
+		const response = await agent.generate(
 			"Please validate the repository TimPietrusky/worker-basic"
 		);
 
 		console.log("\nAgent Validation Response:");
-		console.log(validationResponse.text);
+		console.log(response.text);
 
 		console.log("\nE2E test completed successfully");
 	} catch (error) {

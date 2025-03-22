@@ -2,7 +2,8 @@ import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { mastra } from "../..";
+// Replace the direct import with our singleton utility
+import { getMastraInstance } from "../utils/mastra-singleton";
 
 // Define the return type for the execute function
 type RepairToolResult = {
@@ -24,7 +25,7 @@ type RepairToolResult = {
  * This tool serves as a bridge between the Repository Validator and the Repository Repair Agent,
  * enabling the validator to automatically request fixes when validation fails.
  */
-export const repositoryRepairTool = createTool({
+export const repair = createTool({
 	id: "Repository Repair",
 	inputSchema: z.object({
 		repository: z.string().describe("Repository name (owner/repo)"),
@@ -37,7 +38,7 @@ export const repositoryRepairTool = createTool({
 		attemptCount: z.number().optional().describe("Number of repair attempts so far"),
 	}),
 	description: "Attempts to repair a repository that failed validation",
-	execute: async ({ context }): Promise<any> => {
+	execute: async ({ context }): Promise<RepairToolResult> => {
 		console.log("use the repositoryRepairTool to fix a problem");
 
 		try {
@@ -59,12 +60,27 @@ export const repositoryRepairTool = createTool({
 				customPrompt += `Be more aggressive with your fixes. Consider updating multiple dependencies, changing base images, or other more substantial changes.\n`;
 			}
 
-			// Create the Repository Repair Agent
-			console.log("Creating Repository Repair Agent inside tool...");
-			const agent: Agent = mastra.getAgent("repositoryRepairAgent");
+			try {
+				// Get the mastra instance from our singleton
+				const mastra = getMastraInstance();
 
-			// Generate the prompt for the repair agent
-			const prompt = `
+				// Create the Repository Repair Agent
+				console.log("Creating dev...");
+				const agent: Agent = mastra.getAgent("dev");
+
+				if (!agent) {
+					console.error("dev not found!");
+					return {
+						success: false,
+						repaired: false,
+						error: "dev not found",
+						needsRevalidation: false,
+						fixes: [],
+					};
+				}
+
+				// Generate the prompt for the repair agent
+				const prompt = `
 The following repository failed validation because of a at least one error:
 
 Repository: ${context.repository}
@@ -82,52 +98,46 @@ ${customPrompt}
 Please let me know which changes you made.
 `;
 
-			// Run the agent to repair the repository using structured output
-			console.log("\n=== REPAIR AGENT STARTING ===\n");
+				// Run the agent to repair the repository using structured output
+				console.log("\n=== REPAIR AGENT STARTING ===\n");
 
-			const repairResponse = await agent.generate(prompt, {
-				maxSteps: 10,
-				maxRetries: 5,
-			});
-			console.log("\n============= REPAIR AGENT RESPONSE =============");
-			console.log(repairResponse.text);
-			console.log("================================================\n");
+				const repairResponse = await agent.generate(prompt, {
+					maxSteps: 10,
+					maxRetries: 5,
+				});
+				console.log("\n============= REPAIR AGENT RESPONSE =============");
+				console.log(repairResponse.text);
+				console.log("================================================\n");
 
-			// const result = repairResponse.text;
-
-			// console.log("is this working?");
-
-			// const response: RepairToolResult = {
-			// 	success: true,
-			// 	repaired: true,
-			// 	fixes: [...result.fixes],
-			// 	analysis: result.analysis,
-			// 	// We don't have text property when using structured output, so use the analysis instead
-			// 	response: result.analysis,
-			// 	needsRevalidation: result.success,
-			// 	repoPath: context.repoPath,
-			// 	repository: context.repository,
-			// 	originalErrors: context.errors,
-			// };
-
-			// console.log("\n=== REPAIR COMPLETED ===");
-			// console.log(`Success: ${response.success}`);
-			// console.log(`Repaired: ${response.repaired}`);
-			// console.log(`Fixes made: ${response.fixes.length}`);
-			// console.log(`Needs revalidation: ${response.needsRevalidation}`);
-			// console.log("=========================\n");
-
-			// if (response.success) {
-			// 	console.log("\nIMPORTANT: REPOSITORY MODIFIED - RE-VALIDATION REQUIRED");
-			// 	console.log(
-			// 		"The validator agent should now revalidate the repository to check if fixes resolved the issues.\n"
-			// 	);
-			// }
-
-			return repairResponse.text;
+				// Return the agent's response properly formatted
+				return {
+					success: true,
+					repaired: true,
+					response: repairResponse.text,
+					needsRevalidation: true,
+					fixes: [], // Since we can't extract structured fixes from text
+					repoPath: context.repoPath,
+					repository: context.repository,
+				};
+			} catch (singletonError) {
+				console.error(`Error accessing mastra instance: ${singletonError}`);
+				return {
+					success: false,
+					repaired: false,
+					error: `Error accessing mastra instance: ${singletonError instanceof Error ? singletonError.message : String(singletonError)}`,
+					needsRevalidation: false,
+					fixes: [],
+				};
+			}
 		} catch (error: any) {
 			console.error(`Error repairing repository: ${error.message}`);
-			return `Error repairing repository: ${error.message}`;
+			return {
+				success: false,
+				repaired: false,
+				error: String(error),
+				needsRevalidation: false,
+				fixes: [], // Add empty fixes array to satisfy type
+			};
 		}
 	},
 });

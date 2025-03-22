@@ -12,7 +12,7 @@ async function main() {
 		const repoPath = path.join(process.cwd(), "repos", "TimPietrusky-worker-basic");
 
 		// Get the repository repair agent
-		const agent: Agent = mastra.getAgent("repositoryRepairAgent");
+		const agent: Agent = mastra.getAgent("dev");
 		if (!agent) {
 			console.error("Repository Repair Agent not found!");
 			return;

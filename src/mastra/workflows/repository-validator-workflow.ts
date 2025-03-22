@@ -66,7 +66,7 @@ const repositoryCheckout = new Step({
 	description: "Checks out or updates a Git repository",
 	inputSchema: repositorySchema,
 	outputSchema: checkoutResultSchema,
-	execute: async ({ context, mastra }) => {
+	execute: async ({ context }) => {
 		try {
 			const repo = context?.triggerData;
 			if (!repo) {

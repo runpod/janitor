@@ -94,7 +94,7 @@ import { mastra } from "./mastra";
 
 async function validateWithAgent() {
     // Get the repository validator agent
-    const agent = mastra.getAgent("repositoryValidatorAgent");
+    const agent = mastra.getAgent("workerMaintainer");
 
     // Ask the agent to validate multiple repositories
     const response = await agent.generate(

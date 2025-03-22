@@ -1,6 +1,9 @@
+// Import crypto polyfill first to ensure crypto is available
+import "../utils/crypto-polyfill.js";
+
 import { anthropic } from "@ai-sdk/anthropic";
+// Import from the specific path as recommended
 import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
 import dotenv from "dotenv";
 import { z } from "zod";
 
@@ -10,6 +13,7 @@ import {
 	fileSearchTool,
 	listDirectoryTool,
 } from "../tools/file-system-tools";
+import { createBasicMemory } from "../utils/memory";
 
 // Load environment variables
 dotenv.config({ path: ".env.development" });
@@ -27,19 +31,9 @@ export const repairOutputSchema = z.object({
 	success: z.boolean().describe("Whether fixes were successfully applied"),
 });
 
-// Initialize a simple memory to remember conversation history
-const memory = new Memory({
-	options: {
-		// Keep a few recent messages for context
-		lastMessages: 5,
-		// Enable semantic search to find similar issues
-		semanticRecall: true,
-	},
-});
-
 // Instructions for the repository repair agent
 const REPAIR_AGENT_INSTRUCTIONS = `
-You are an expert at diagnosing and fixing Docker build failures in worker repositories.
+You are an expert at diagnosing and fixing Docker build failures in worker repositories and a supremely good dev.
 
 Your job is to analyze repositories that failed validation in the Repository Build Validator
 and apply fixes to make them build successfully. You have access to file operation tools that
@@ -52,25 +46,31 @@ When you receive an error report from the Repository Build Validator, follow the
 3. Use Read File to examine their contents
 4. Determine the necessary fixes based on your analysis
 5. Use Edit File to apply the changes - BE PROACTIVE and ALWAYS attempt to fix issues
-6. When done, you must provide structured output with:
-   - An analysis of the issues you found
-   - A list of all files you modified and how you changed them
-   - Whether your fixes were successfully applied
-
-For Python dependency issues:
-- If a package has compatibility issues, update its version to a known compatible version
-- Don't hesitate to update dependency versions - it's better to try a fix than do nothing
+6. When done, you must provide structured and concise output with:
+   - a short description of the changes you made
+   - A list of all files you modified with their relative paths from the root of the repository
 
 Always ensure your fixes follow Docker best practices and are minimal - only change what's needed.
 Provide detailed explanations of your changes to help the maintainer understand the fixes.
 
 IMPORTANT: You must attempt to fix any issue encountered. NEVER declare an issue as unfixable without trying at least one fix.
+
+# output format
+
+{
+  "description": "...",
+  "files": [
+    {
+     "path": "/relative/path/to/file.txt",
+    }
+  ]
+}
 `;
 
 /**
  * Creates a Repository Repair Agent using Claude-3-7-Sonnet
  */
-export const createRepositoryRepairAgent = () => {
+export const create_dev = () => {
 	// Check for Anthropic API key
 	const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -83,7 +83,7 @@ export const createRepositoryRepairAgent = () => {
 
 	// Create agent with Claude-3-7-Sonnet model
 	const agent = new Agent({
-		name: "Repository Repair Agent",
+		name: "dev",
 		instructions: REPAIR_AGENT_INSTRUCTIONS,
 		model: anthropic("claude-3-7-sonnet-latest") as any, // Type assertion to bypass compatibility issues
 		tools: {
@@ -92,11 +92,11 @@ export const createRepositoryRepairAgent = () => {
 			fileSearchTool,
 			editFileTool,
 		},
-		memory, // Add memory to the agent
+		memory: createBasicMemory(),
 	});
 
 	return agent;
 };
 
 // Initialize and export the agent
-export const repositoryRepairAgent = createRepositoryRepairAgent();
+export const dev = create_dev();

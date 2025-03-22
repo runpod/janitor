@@ -9,7 +9,7 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",
-    "test:repository-validator-agent": "tsx src/test-repository-validator-agent.ts",
+    "test:worker-maintainer": "tsx src/test-worker-maintainer.ts",
     "test:repository-validator-workflow": "tsx src/test-repository-validator-workflow.ts",
     "test:docker-validation-workflow": "tsx src/test-docker-validation-workflow.ts",
     "test:tool-checkout-git-repository": "tsx src/test-tool-checkout-git-repository.ts",

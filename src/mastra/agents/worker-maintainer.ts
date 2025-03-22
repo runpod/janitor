@@ -1,14 +1,19 @@
+// Import crypto polyfill first to ensure crypto is available
+import "../utils/crypto-polyfill.js";
+
 import { openai } from "@ai-sdk/openai";
+// Import from the specific path as recommended
 import { Agent } from "@mastra/core/agent";
 
 import { dockerValidationTool } from "../tools/docker-validation-tool";
 import { gitCheckoutTool } from "../tools/git-tools";
-import { createRepositoryPRTool } from "../tools/repository-pr-tool";
-import { repositoryRepairTool } from "../tools/repository-repair-tool";
+import { prCreator } from "../tools/pr-creator";
+import { repair } from "../tools/repair";
+import { createBasicMemory } from "../utils/memory";
 
 // Define the repository validator agent
-export const repositoryValidatorAgent = new Agent({
-	name: "Repository Validator Agent",
+export const workerMaintainer = new Agent({
+	name: "worker maintainer",
 	instructions: `You are an expert Docker repository validator and fixer. 
   
   You help users check if Docker repositories are valid and working correctly by:
@@ -45,8 +50,10 @@ export const repositoryValidatorAgent = new Agent({
   When given multiple repositories to validate, check each one sequentially and provide a summary of all findings.
   Focus on providing clear, factual responses about which repositories pass validation and which ones fail.
   If a validation fails, explain which step failed and why.
-  
-  When summarizing multiple repository validations, create a table showing:
+
+  # output format
+
+  create a table showing:
   - Repository name
   - Validation status (✅ Pass / ❌ Fail)
   - Repair status (🔧 Fixed / ⚠️ Unfixable) - if repair was attempted
@@ -57,7 +64,8 @@ export const repositoryValidatorAgent = new Agent({
 	tools: {
 		gitCheckoutTool,
 		dockerValidationTool,
-		repositoryRepairTool,
-		createRepositoryPRTool,
+		repositoryRepairTool: repair,
+		createRepositoryPRTool: prCreator,
 	},
+	memory: createBasicMemory(),
 });

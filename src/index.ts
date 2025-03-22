@@ -17,11 +17,7 @@ export {
 } from "./mastra/tools/file-system-tools";
 
 // Add repository repair agent from Mastra
-export {
-	createRepositoryRepairAgent,
-	fixSchema,
-	repairOutputSchema,
-} from "./mastra/agents/repository-repair-agent";
+export { create_dev, fixSchema, repairOutputSchema } from "./mastra/agents/dev";
 
 async function main() {
 	try {

@@ -119,7 +119,6 @@ function spawnWithLogs(
 			if (isTimedOut) return; // Already handled by timeout
 
 			if (code === 0) {
-				console.log(`Command executed successfully with exit code ${code}`);
 				resolve({
 					success: true,
 					output: output + errorOutput, // Docker build info is often in stderr

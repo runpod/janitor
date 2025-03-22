@@ -348,11 +348,13 @@ When connecting workflows with agents:
 Example of a tool that executes a workflow:
 
 ```typescript
+import { mastra } from "../..";
+
 export const dockerValidationTool = createTool({
   id: "Docker Repository Validator",
   description: "Validates a Docker repository",
   inputSchema,
-  execute: async ({ context, mastra }) => {
+  execute: async ({ context }) => {
     try {
       const workflow = mastra.getWorkflow("dockerValidationWorkflow");
       const { runId, start } = workflow.createRun();
