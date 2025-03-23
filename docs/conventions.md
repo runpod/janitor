@@ -194,13 +194,17 @@ Example of the correct agent-as-tool pattern:
 import { createTool } from "@mastra/core/tools";
 import { createRepositoryRepairAgent } from "../agents/repository-repair-agent.js";
 
+import { getMastraInstance } from "../utils/mastra-singleton";
+
 export const repositoryRepairTool = createTool({
     id: "Repository Repair",
     // ...schema and description...
     execute: async ({ context }) => {
         try {
+            const mastra = getMastraInstance();
+
             // Create the agent directly
-            const repairAgent = await createRepositoryRepairAgent();
+            const repairAgent = mastra.getAgent("repairAgent");
 
             // Generate prompt
             const prompt = `...${context.repository}...${context.errors}...`;
@@ -348,7 +352,7 @@ When connecting workflows with agents:
 Example of a tool that executes a workflow:
 
 ```typescript
-import { mastra } from "../..";
+import { getMastraInstance } from "utils/mastra-singleton";
 
 export const dockerValidationTool = createTool({
   id: "Docker Repository Validator",
@@ -356,6 +360,8 @@ export const dockerValidationTool = createTool({
   inputSchema,
   execute: async ({ context }) => {
     try {
+      const mastra = getMastraInstance();
+
       const workflow = mastra.getWorkflow("dockerValidationWorkflow");
       const { runId, start } = workflow.createRun();
       const result = await start({
