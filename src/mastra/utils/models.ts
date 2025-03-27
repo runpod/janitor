@@ -5,7 +5,7 @@ import { LanguageModelV1 } from "@ai-sdk/provider";
 import dotenv from "dotenv";
 
 // Load environment variables
-dotenv.config({ path: ".env.development" });
+dotenv.config({ path: ".env" });
 
 // Check for required environment variables
 const requiredEnvVars = [
@@ -47,8 +47,10 @@ export const runpodDev = createOpenAI({
 
 export const runpodModel = runpodDev(process.env.RUNPOD_MODEL_NAME as string);
 
+export const openaiModel = openaiProvider("gpt-4o")
+
 // Function to get the appropriate model based on use case
 export const getModel = (type: "coding" | "general" = "general"): LanguageModelV1 => {
 	// Use Anthropic for coding tasks, RunPod for general tasks
-	return (type === "coding" ? anthropicProvider : runpodModel) as LanguageModelV1;
+	return (type === "coding" ? anthropicProvider : openaiModel) as LanguageModelV1;
 };

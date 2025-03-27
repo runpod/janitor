@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { mastra } from "./mastra/index";
 
 // Load environment variables
-dotenv.config({ path: ".env.development" });
+dotenv.config({ path: ".env" });
 
 // Export the Mastra instance and its components
 export { mastra };

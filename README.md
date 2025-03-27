@@ -1,5 +1,5 @@
-# worker maintainer
+# janitor
 
-> maintain our workers with agents using mastra
+> automatically maintain docker repositories with agents
 
-![Worker Maintainer Diagram](docs/worker_maintainer_diagram.png)
+![janitor diagram](docs/20250327_janitor_diagram.png)

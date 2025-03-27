@@ -10,7 +10,7 @@ import { fileReadTool } from "../tools/file-system-tools";
 import { getModel } from "../utils/models";
 
 // Load environment variables
-dotenv.config({ path: ".env.development" });
+dotenv.config({ path: ".env" });
 
 // Define the PR result schema for structured output
 export const prResultSchema = z.object({

@@ -26,25 +26,19 @@ async function main() {
 		}
 
 		// Get the repo validator agent
-		const agent = mastra.getAgent("workerMaintainer");
-		if (!agent) {
-			console.error("Worker Maintainer Agent not found!");
-			return;
-		}
+		const agent = mastra.getAgent("janitor");
 
-		console.log("Running worker maintainer with agent...");
+		console.log("Running janitor...");
 
 		const response = await agent.generate(
 			"Please validate the repository TimPietrusky/worker-basic"
 		);
 
-		console.log("WORKER MAINTAINER RESPONSE");
+		console.log("JANITOR RESPONSE");
 		console.log("--------------------------------");
 		console.log(response.text);
 		console.log("--------------------------------");
-		// console.log(JSON.stringify(response.response.messages, null, 2));
-		console.log("--------------------------------");
-		// console.log(response.request.body);
+		console.log(JSON.stringify(response.response.messages, null, 2));
 		console.log("--------------------------------");
 
 	} catch (error) {

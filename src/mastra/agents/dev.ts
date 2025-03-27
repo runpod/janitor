@@ -16,7 +16,7 @@ import { createBasicMemory } from "../utils/memory";
 import { getModel } from "../utils/models";
 
 // Load environment variables
-dotenv.config({ path: ".env.development" });
+dotenv.config({ path: ".env" });
 
 // Define the fix schema that will be used for structured output
 export const fixSchema = z.object({

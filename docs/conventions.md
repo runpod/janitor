@@ -119,7 +119,7 @@ const mcp = new MCPConfiguration({
 
 When working with the GitHub MCP server specifically:
 
-1. **GitHub Personal Access Token**: Always store GitHub tokens in `.env.development` with the name
+1. **GitHub Personal Access Token**: Always store GitHub tokens in `.env` with the name
    `GITHUB_PERSONAL_ACCESS_TOKEN` and ensure it has appropriate repository permissions.
 
 2. **MCP Server Configuration**: Configure the GitHub MCP server with the proper command and
@@ -318,7 +318,7 @@ When dealing with Docker container logs:
 
 ### API Key Management
 
-- Store all API keys in `.env.development`
+- Store all API keys in `.env`
 - Follow standard naming conventions (e.g., `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)
 - Check for presence of required keys before agent initialization
 - Provide clear error messages when keys are missing

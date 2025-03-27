@@ -12,8 +12,8 @@ import { createBasicMemory } from "../utils/memory.js";
 import { getModel } from "../utils/models.js";
 
 // Define the repository validator agent
-export const workerMaintainer = new Agent({
-	name: "worker maintainer",
+export const janitor = new Agent({
+	name: "janitor",
 	instructions: `You are an expert Docker repository validator and fixer. 
 
   You help users check if Docker repositories are valid and working correctly by:

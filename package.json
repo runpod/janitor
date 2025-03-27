@@ -1,7 +1,7 @@
 {
-  "name": "worker-maintainer",
+  "name": "janitor",
   "version": "1.0.0",
-  "description": "RunPod Worker Repository Build Validator using Mastra.ai",
+  "description": "validate and fix docker repositories",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -9,7 +9,7 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",
-    "test:worker-maintainer": "tsx src/tests/test-worker-maintainer.ts",
+    "test:janitor": "tsx src/tests/test-janitor.ts"
   },
   "keywords": [
     "runpod",

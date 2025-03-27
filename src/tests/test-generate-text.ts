@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { runpodModel } from "../mastra/utils/models";
 
-dotenv.config({ path: ".env.development" });
+dotenv.config({ path: ".env" });
 
 
 // Create the stream using the AI SDK

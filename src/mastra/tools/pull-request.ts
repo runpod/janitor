@@ -26,8 +26,6 @@ export const pullRequest = createTool({
 	description: "Creates or updates a Pull Request for a repository that has been fixed",
 	execute: async ({ context }): Promise<any> => {
 
-		console.log("ARE WE EVER GOING IN HERE?")
-
 		try {
 			console.log(`Initiating PR creation for repository: ${context.repository}`);
 			console.log(`Repository path: ${context.repositoryPath}`);
@@ -54,10 +52,10 @@ Return a bullet list with the PR details including whether it was successful, th
 				console.log("Calling Repository PR Agent to create the PR...");
 				const result = await agent.generate(messageToAgent);
 
-				console.log("============= PR AGENT RESPONSE =============");
+				console.log("============= PR CREATOR =============");
 				console.log(result.text);
-				console.log("--------------------------------");
-				console.log(JSON.stringify(result.response.messages, null, 2));
+				// console.log("--------------------------------");
+				// console.log(JSON.stringify(result.response.messages, null, 2));
 				console.log("================================================\n");
 
 				return result.text;
