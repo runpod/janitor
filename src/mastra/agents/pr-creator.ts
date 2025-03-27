@@ -6,7 +6,7 @@ import { MCPConfiguration } from "@mastra/mcp";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import { fileReadTool } from "../tools";
+import { fileReadTool } from "../tools/file-system-tools";
 import { getModel } from "../utils/models";
 
 // Load environment variables

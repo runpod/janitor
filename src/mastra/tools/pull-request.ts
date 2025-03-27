@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { getMastraInstance } from "../utils/mastra-singleton";
+import { getMastraInstance } from "../utils/mastra";
 
 /**
  * PR Creator - Creates a pull request for a fixed repository

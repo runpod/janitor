@@ -1,10 +1,12 @@
 import { Mastra } from "@mastra/core";
 import { createLogger } from "@mastra/core/logger";
 
-import { dev, prCreatorAgent, workerMaintainer } from "./agents";
+import { dev } from "./agents/dev";
+import { prCreatorAgent } from "./agents/pr-creator";
+import { workerMaintainer } from "./agents/worker-maintainer";
 import { createPlaceholderAgent } from "./utils/agents";
-import { setMastraInstance } from "./utils/mastra-singleton";
-import { repositoryRepairWorkflow } from "./workflows";
+import { setMastraInstance } from "./utils/mastra";
+import { repositoryRepairWorkflow } from "./workflows/repository-repair-workflow";
 import { dockerValidationWorkflow } from "./workflows/docker-validation-workflow";
 import { repositoryValidatorWorkflow } from "./workflows/repository-validator-workflow";
 

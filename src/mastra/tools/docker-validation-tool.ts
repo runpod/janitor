@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { getMastraInstance } from "../utils/mastra-singleton";
+import { getMastraInstance } from "../utils/mastra";
 
 // Define input schema for the Docker validation tool
 const inputSchema = z.object({

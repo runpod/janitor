@@ -3,7 +3,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 // Replace the direct import with our singleton utility
-import { getMastraInstance } from "../utils/mastra-singleton";
+import { getMastraInstance } from "../utils/mastra";
 
 export const repair = createTool({
 	id: "Repository Repair",
