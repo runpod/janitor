@@ -1,8 +1,12 @@
 {
   "mcpServers": {
-    "mastra": {
+    "mastra-windows": {
       "command": "powershell",
       "args": ["-Command", "npx -y @mastra/mcp-docs-server"]
+    },
+    "mastra-mac-linux": {
+      "command": "npx",
+      "args": ["-y", "@mastra/mcp-docs-server"]
     }
   }
 }
