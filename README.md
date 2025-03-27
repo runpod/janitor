@@ -72,11 +72,13 @@ To validate a Docker repository:
 
 ```bash
 npm run test:janitor
+```
 
 This will:
+
 1. Clone the example repository ([TimPietrusky/worker-basic](https://github.com/TimPietrusky/worker-basic))
 2. Validate the Dockerfile
 3. Attempt repairs if needed
 4. Create a PR with fixes (if GitHub token is configured)
-```
+
 
