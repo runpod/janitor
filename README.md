@@ -23,7 +23,7 @@ This guide will help you set up and run Janitor locally for maintaining and vali
 - Docker Desktop installed and running
 - API keys:
   - [Anthropic API key](https://console.anthropic.com/settings/keys) - Create an account and get your API key from the console
-  - [GitHub Personal Access Token](https://github.com/settings/tokens) - Create a token with `repo` and `workflow` scopes
+  - [GitHub Personal Access Token](https://github.com/settings/tokens) - Create a token with `repo` scope
   - [RunPod API key](https://www.runpod.io/console/user/settings) - Sign up for RunPod and create an API key in your account settings
   - [RunPod Endpoint ID](https://www.runpod.io/console/serverless) - Create a serverless endpoint using vLLM with [ToolACE-2-Llama-3.1-8B](https://huggingface.co/Team-ACE/ToolACE-2-Llama-3.1-8B) (or any other compatible llm with function calling capabilities)  and use its ID
 
