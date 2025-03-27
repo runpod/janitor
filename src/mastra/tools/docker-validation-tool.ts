@@ -28,69 +28,62 @@ export const dockerValidationTool = createTool({
 			const repoPath = context.repoPath;
 
 			// Get mastra from our singleton utility
-			try {
-				const mastra = getMastraInstance();
+			const mastra = getMastraInstance();
 
-				// Get the workflow from the mastra instance
-				const dockerValidationWorkflow = mastra.getWorkflow("dockerValidationWorkflow");
-				if (!dockerValidationWorkflow) {
-					return {
-						success: false,
-						repoPath: context.repoPath,
-						error: "Docker validation workflow not found",
-					};
-				}
-
-				// Create a run and execute the workflow
-				const { runId, start } = dockerValidationWorkflow.createRun();
-
-				// Start the workflow with the parameters - using the updated schema property names
-				const result = await start({
-					triggerData: {
-						repositoryPath: repoPath, // This matches our updated workflow schema
-						imageName: context.imageName,
-						platform: context.platform,
-						ports: context.ports,
-						envVars: context.envVars,
-						command: context.command,
-					},
-				});
-
-				// Get the report directly from the 'report' step
-				const reportStepResult = result.results?.report;
-
-				if (reportStepResult?.status === "success" && reportStepResult.output?.report) {
-					// Extract success/failure status from the report
-					const report = reportStepResult.output.report;
-					const isSuccess = report.includes("**Overall Success**: ✅ Passed");
-
-					return {
-						success: true,
-						passed: isSuccess,
-						repoPath: context.repoPath,
-						report: report,
-					};
-				}
-
-				// If we couldn't find the report step, log the full results for debugging
-				console.error(
-					"Couldn't find report step result. Full workflow result:",
-					JSON.stringify(result, null, 2)
-				);
-
+			// Get the workflow from the mastra instance
+			const dockerValidationWorkflow = mastra.getWorkflow("dockerValidationWorkflow");
+			if (!dockerValidationWorkflow) {
 				return {
 					success: false,
 					repoPath: context.repoPath,
-					error: "Workflow completed but no report was generated",
-				};
-			} catch (singletonError) {
-				console.error(`Error accessing mastra instance: ${singletonError}`);
-				return {
-					success: false,
-					repoPath: context.repoPath,
-					error: `Error accessing mastra instance: ${singletonError instanceof Error ? singletonError.message : String(singletonError)}`,
+					error: "Docker validation workflow not found",
 				};
 			}
+
+			// Create a run and execute the workflow
+			const { runId, start } = dockerValidationWorkflow.createRun();
+
+			// Start the workflow with the parameters - using the updated schema property names
+			const result = await start({
+				triggerData: {
+					repositoryPath: repoPath, // This matches our updated workflow schema
+					imageName: context.imageName,
+					platform: context.platform,
+					ports: context.ports,
+					envVars: context.envVars,
+					command: context.command,
+				},
+			});
+
+			// Get the report directly from the 'report' step
+			const reportStepResult = result.results?.report;
+
+			if (reportStepResult?.status === "success" && reportStepResult.output?.report) {
+				// Extract success/failure status from the report
+				const report = reportStepResult.output.report;
+				const isSuccess = report.includes("**Overall Success**: ✅ Passed");
+
+				console.log(report);
+
+				return {
+					success: true,
+					passed: isSuccess,
+					repoPath: context.repoPath,
+					report: report,
+				};
+			}
+
+			// If we couldn't find the report step, log the full results for debugging
+			console.error(
+				"Couldn't find report step result. Full workflow result:",
+				JSON.stringify(result, null, 2)
+			);
+
+			return {
+				success: false,
+				repoPath: context.repoPath,
+				error: "Workflow completed but no report was generated",
+			};
 		} catch (error) {
 			console.error(`Error running Docker validation workflow: ${error}`);
 			return {

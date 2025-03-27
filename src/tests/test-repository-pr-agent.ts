@@ -27,12 +27,6 @@ async function main() {
 			},
 		];
 
-		// Sample original errors
-		const originalErrors = [
-			"COPY failed: file not found in build context or excluded by .dockerignore: file not found",
-			"Could not install packages due to version conflicts",
-		];
-
 		// Prepare the message for the agent
 		const message = `
 I need you to create a Pull Request for a fixed repository with the following details:
@@ -43,9 +37,6 @@ Number of fixes: ${fixes.length}
 
 Fixes applied:
 ${fixes.map(fix => `- ${fix.file}: ${fix.description}`).join("\n")}
-
-Original errors:
-${originalErrors.join("\n")}
 
 The repository has been successfully fixed and validation has passed.
 Please create a PR with these changes, following your standard process for branch creation, committing, and PR submission.

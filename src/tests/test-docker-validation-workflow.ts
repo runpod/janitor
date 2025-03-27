@@ -3,19 +3,6 @@ import "../mastra/utils/crypto-polyfill.js";
 
 import { mastra } from "../mastra/index.js";
 
-// Add debug logging to inspect the mastra object
-console.log("Docker Test - Mastra object type:", typeof mastra);
-console.log(
-	"Docker Test - Mastra has getWorkflow method:",
-	typeof mastra.getWorkflow === "function"
-);
-// Access properties safely to avoid TypeScript errors
-console.log("Docker Test - Mastra keys:", Object.keys(mastra as any));
-console.log(
-	"Docker Test - Available methods:",
-	Object.getOwnPropertyNames(Object.getPrototypeOf(mastra))
-);
-
 async function testDockerValidationWorkflow() {
 	try {
 		console.log("Testing Docker Validation Workflow directly...");

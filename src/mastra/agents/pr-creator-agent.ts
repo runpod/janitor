@@ -1,13 +1,13 @@
 // Import crypto polyfill first to ensure crypto is available
-import "../utils/crypto-polyfill.js";
+import "../utils/crypto-polyfill";
 
-import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
 import { MCPConfiguration } from "@mastra/mcp";
 import dotenv from "dotenv";
 import { z } from "zod";
 
 import { fileReadTool } from "../tools";
+import { getModel } from "../utils/models";
 
 // Load environment variables
 dotenv.config({ path: ".env.development" });
@@ -26,47 +26,34 @@ export const prResultSchema = z.object({
 export const githubMCP = new MCPConfiguration({
 	id: "github-server-agent",
 	servers: {
-		// git: {
-		// 	command: "cmd",
-		// 	args: ["/c", "npx -y @modelcontextprotocol/server-github@latest"],
-		// 	env: {
-		// 		GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
-		// 	},
-		// },
-
 		github: {
-			command: "cmd",
-			args: ["/c", "npx -y @modelcontextprotocol/server-github@latest"],
+			command: process.platform === "win32" ? "cmd" : "npx",
+			args:
+				process.platform === "win32"
+					? ["/c", "npx -y @modelcontextprotocol/server-github"]
+					: ["-y", "@modelcontextprotocol/server-github"],
 			env: {
 				GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
-				// Add debug environment variable to see more information
-				DEBUG: "modelcontextprotocol:*",
-				// Add this to ensure all tools are properly loaded
-				MODEL_CONTEXT_PROTOCOL_DEBUG: "true",
 			},
 		},
 	},
 });
 
-// Instructions for the repository PR agent
+// Instructions for the PR creation agent
 const PR_AGENT_INSTRUCTIONS = `
-You are an expert at creating Pull Requests for fixed Docker repositories.
+You are an expert at creating Pull Requests for repositories that have been repaired.
+- extract the info about the repo from the message of the user
+- open the files that are changed in the pr using the fileReadTool
+- Always make sure to follow commitizen formatting with conventional commits for the commit and the title of the PR
 
-Your job is to create or update pull requests for repositories that have been fixed by the Repository Repair Agent.
-You will take the repair results and create a new branch, commit the changes, push the branch, and create or update a pull request.
+You follow these steps and use the appropriate tools:
 
-When you receive repository repair results, follow these steps:
-
-1. Parse the repository information to determine owner and repo name
-2. Extract the files from the repair results and use the fileReadTool to read the contents of the files (don't make up the changes for the files, only use the contents from the repair results)
-3. Create a new branch for the fixed repository with a standardized naming convention (e.g., fix/repository-name-YYYYMMDD)
-4. Commit and push the changes to the new branch
-5. Check if there's an existing PR for this branch
-5. If a PR exists, update it with the new changes
-6. If no PR exists, create a new PR from this branch to the main branch
-7. follow the "pr template" for the PR and the "output format" for the output
-
-always make sure to follow commitizen formatting with conventional commits for the commit and the title of the PR
+1. Check if the repository already has a PR with the proposed changes 
+2. If a PR exists, update it with the new changes
+3. If no PR exists, create a new branch for the changes
+4. Commit all the changed files to the new branch
+5. Push the branch to GitHub
+6. Create a new PR from the branch to the main branch
 
 # pr template
 
@@ -82,36 +69,22 @@ always make sure to follow commitizen formatting with conventional commits for t
 
 - list of issues that were closed by the changes (if any)
 """
-
-# output format
-
-{
-  "success": true,
-  "prExists": false,
-  "prNumber": 123,
-  "prUrl": "https://github.com/owner/repo/pull/123",
-  "branch": "fix/repository-name-YYYYMMDD",
-  "summary": "..."
-}
 `;
 
 /**
- * Parse repository string to extract owner and repo name
+ * Parse a repository string to extract owner and repository name
  */
 export const parseRepository = (repository: string): { owner: string; repo: string } => {
+	// Check if the repository string contains a slash (indicating owner/repo format)
 	const parts = repository.split("/");
-	if (parts.length < 2) {
-		throw new Error(`Invalid repository format: ${repository}`);
+	if (parts.length === 2) {
+		return { owner: parts[0], repo: parts[1] };
 	}
-	return {
-		owner: parts[0],
-		repo: parts[1],
-	};
+
+	// Default to runpod-workers organization if only repo name is provided
+	return { owner: "runpod-workers", repo: repository };
 };
 
-/**
- * Create the repository PR agent
- */
 export const create_prCreatorAgent = async () => {
 	try {
 		// Get all GitHub MCP tools
@@ -120,7 +93,7 @@ export const create_prCreatorAgent = async () => {
 		return new Agent({
 			name: "pr creator",
 			instructions: PR_AGENT_INSTRUCTIONS,
-			model: openai("gpt-4o"),
+			model: getModel("coding"),
 			tools: { ...githubTools, fileReadTool },
 		});
 	} catch (error) {

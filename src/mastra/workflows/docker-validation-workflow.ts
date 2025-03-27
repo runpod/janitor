@@ -10,6 +10,10 @@ import {
 	runDockerContainer,
 } from "../tools/docker-tools";
 
+const retryConfig = {
+	attempts: 1,
+};
+
 // Step 1: Find Dockerfile and build Docker image
 const dockerBuildStep = new Step({
 	id: "build",
@@ -20,6 +24,7 @@ const dockerBuildStep = new Step({
 		dockerfilePath: z.string().optional(),
 		error: z.string().optional(),
 	}),
+	retryConfig,
 	execute: async ({ context }) => {
 		// Get the repository path from the trigger data
 		const repoPath = context.triggerData.repositoryPath;
@@ -95,6 +100,7 @@ const dockerRunStep = new Step({
 		containerId: z.string().optional(),
 		error: z.string().optional(),
 	}),
+	retryConfig,
 	execute: async ({ context }) => {
 		// Get the image name from the previous step
 		const buildStepResult = context.getStepResult(dockerBuildStep);
@@ -154,6 +160,7 @@ const dockerLogsStep = new Step({
 		lineCount: z.number().optional(),
 		error: z.string().optional(),
 	}),
+	retryConfig,
 	execute: async ({ context }) => {
 		// Get the container ID from the previous step
 		const runStepResult = context.getStepResult(dockerRunStep);
@@ -213,6 +220,7 @@ const generateReportStep = new Step({
 		success: z.boolean(),
 		report: z.string(),
 	}),
+	retryConfig,
 	execute: async ({ context }) => {
 		const repoPath = context.triggerData.repositoryPath;
 		const repoName = path.basename(repoPath);
@@ -278,28 +286,6 @@ ${imageName ? `**Image Name**: \`${imageName}\`` : ""}
 ### 3. Container Execution
 **Status**: ${containerId ? "✅ Success" : "❌ Failed"}
 ${containerId ? `**Container ID**: \`${containerId}\`` : errors.run ? `**Error**: ${errors.run}` : ""}
-
-### 4. Container Logs
-**Status**: ${logsResult && logsResult.success ? "✅ Success" : "❌ Failed"}
-${lineCount ? `**Log Lines**: ${lineCount}` : ""}
-${errors.logs ? `**Error**: ${errors.logs}` : ""}
-
-${
-	logs
-		? `## Container Log Preview (first 20 lines)
-\`\`\`
-${logs.split("\n").slice(0, 20).join("\n")}
-${lineCount && lineCount > 20 ? `\n... (${lineCount - 20} more lines)` : ""}
-\`\`\`
-`
-		: logsResult && logsResult.success && (!logs || logs.trim() === "")
-			? `## Container Log Preview
-\`\`\`
-No logs produced by container or logs were empty. This is not an error.
-\`\`\`
-`
-			: ""
-}
 
 ## Conclusion
 The Docker validation process ${overallSuccess ? "completed successfully" : "failed"}. 

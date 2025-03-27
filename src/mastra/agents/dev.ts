@@ -1,7 +1,6 @@
 // Import crypto polyfill first to ensure crypto is available
-import "../utils/crypto-polyfill.js";
+import "../utils/crypto-polyfill";
 
-import { anthropic } from "@ai-sdk/anthropic";
 // Import from the specific path as recommended
 import { Agent } from "@mastra/core/agent";
 import dotenv from "dotenv";
@@ -14,6 +13,7 @@ import {
 	listDirectoryTool,
 } from "../tools/file-system-tools";
 import { createBasicMemory } from "../utils/memory";
+import { getModel } from "../utils/models";
 
 // Load environment variables
 dotenv.config({ path: ".env.development" });
@@ -57,35 +57,22 @@ IMPORTANT: You must attempt to fix any issue encountered. NEVER declare an issue
 
 # output format
 
-{
-  "description": "...",
-  "files": [
-    {
-     "path": "/relative/path/to/file.txt",
-    }
-  ]
-}
+only provide the following output, nothing else:
+
+- description: Fixed the Dockerfile by updating the base image to a valid tag and installing missing dependencies
+- files: 
+  - Dockerfile: fixed an issue with COPY
 `;
 
 /**
  * Creates a Repository Repair Agent using Claude-3-7-Sonnet
  */
 export const create_dev = () => {
-	// Check for Anthropic API key
-	const apiKey = process.env.ANTHROPIC_API_KEY;
-
-	if (!apiKey) {
-		console.warn("ANTHROPIC_API_KEY not found in environment variables");
-		throw new Error(
-			"ANTHROPIC_API_KEY is required. Please set it in your environment variables."
-		);
-	}
-
-	// Create agent with Claude-3-7-Sonnet model
+	// Create agent with the appropriate AI model
 	const agent = new Agent({
 		name: "dev",
 		instructions: REPAIR_AGENT_INSTRUCTIONS,
-		model: anthropic("claude-3-7-sonnet-latest") as any, // Type assertion to bypass compatibility issues
+		model: getModel("coding"),
 		tools: {
 			fileReadTool,
 			listDirectoryTool,

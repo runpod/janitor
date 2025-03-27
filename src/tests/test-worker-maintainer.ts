@@ -35,16 +35,18 @@ async function main() {
 		console.log("Running worker maintainer with agent...");
 
 		const response = await agent.generate(
-			"Please validate the repository TimPietrusky/worker-basic",
-			{
-				maxSteps: 20,
-				maxRetries: 5,
-			}
+			"Please validate the repository TimPietrusky/worker-basic"
 		);
 
+		console.log("WORKER MAINTAINER RESPONSE");
+		console.log("--------------------------------");
 		console.log(response.text);
+		console.log("--------------------------------");
+		// console.log(JSON.stringify(response.response.messages, null, 2));
+		console.log("--------------------------------");
+		// console.log(response.request.body);
+		console.log("--------------------------------");
 
-		console.log("\nE2E test completed successfully");
 	} catch (error) {
 		console.error("Error running E2E test:", error);
 	}
