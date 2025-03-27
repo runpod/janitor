@@ -18,7 +18,7 @@ This guide will help you set up and run Janitor locally for maintaining and vali
 
 ### Prerequisites
 
-- Node.js (v18 or later)
+- Node.js (v22 or later)
 - npm
 - Docker Desktop installed and running
 - API keys:
