@@ -2,7 +2,7 @@ import { generateText, tool } from "ai";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import { runpodModel } from "./src/mastra/utils/models";
+import { runpodModel } from "../mastra/utils/models";
 
 dotenv.config({ path: ".env.development" });
 
