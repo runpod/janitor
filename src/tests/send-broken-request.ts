@@ -1,14 +1,14 @@
 import axios from "axios";
 
-// Your endpoint URL
-const ENDPOINT_URL = "https://k0guxrh3tzdbfx-8000.proxy.runpod.net/v1/chat/completions";
-// Your API key - replace with your actual key
-const API_KEY = "your-api-key";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Request body
 const requestBody = {
-	model: "Team-ACE/ToolACE-2-8B",
+	model: process.env.RUNPOD_MODEL,
 	temperature: 0,
+	top_p: 1,
 	messages: [
 		{
 			role: "system",
@@ -278,7 +278,7 @@ const requestBody = {
 								additionalProperties: false,
 							},
 							description: "List of fixes that were applied",
-						}
+						},
 					},
 					required: ["repositoryPath", "repository", "fixes"],
 					additionalProperties: false,
@@ -294,28 +294,22 @@ async function sendRequest() {
 	try {
 		console.log("Sending request to RunPod endpoint...");
 
-		const response = await axios.post("https://k0guxrh3tzdbfx-8000.proxy.runpod.net/v1/chat/completions", requestBody, {
-			headers: {
-				"Content-Type": "application/json"
-			},
-		});
+		const response = await axios.post(
+			`https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/openai/v1/chat/completions`,
+			// `https://pxb2lb6660repg-8000.proxy.runpod.net/v1/chat/completions`,
+			requestBody,
+			{
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`,
+				},
+			}
+		);
 
 		console.log("Response received:");
 		console.log(JSON.stringify(response.data, null, 2));
 	} catch (error) {
-		console.error("Error sending request:");
-		if (error.response) {
-			// The request was made and the server responded with a status code
-			// that falls out of the range of 2xx
-			console.error("Response status:", error.response.status);
-			console.error("Response data:", error.response.data);
-		} else if (error.request) {
-			// The request was made but no response was received
-			console.error("No response received:", error.request);
-		} else {
-			// Something happened in setting up the request that triggered an Error
-			console.error("Error message:", error.message);
-		}
+		console.error("Error sending request:", error);
 	}
 }
 

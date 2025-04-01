@@ -1,21 +1,19 @@
 import axios from "axios";
+import dotenv from "dotenv";
 
-// Your endpoint URL
-const ENDPOINT_URL = "https://k0guxrh3tzdbfx-8000.proxy.runpod.net/v1/chat/completions";
-// Your API key - replace with your actual key
-const API_KEY = "your-api-key";
+dotenv.config();
 
-// Request body
 const requestBody = {
-	model: "Team-ACE/ToolACE-2-8B",
+	model: "Team-ACE/ToolACE-2-Llama-3.1-8B",
 	temperature: 0,
+	top_p: 1,
 	messages: [
 		{
 			role: "system",
 			content:
 				'You are an expert Docker repository validator and fixer. \n\n  You help users check if Docker repositories are valid and working correctly by:\n  1. Cloning the Git repository using gitCheckoutTool\n  2. Finding Dockerfiles in the repository\n  3. Validating a docker image by building and running it\n  4. Checking container logs for proper operation\n  5. push changes to github via a pull request\n  \n  When validation fails, you can automatically repair common issues using your repair tools.\n  When fixing repositories:\n  - First, try to understand the root cause of the failure\n  - Use the Repository Repair tool to fix the issues with the EXACT error, not all information, just the error itself and make SUPER SURE to escape EVERY double quote\n  - When the repair tool returns with needsRevalidation=true, IMMEDIATELY re-validate the repository using the dockerValidationTool\n  - Pass the exact same repository path (repoPath) back to the dockerValidationTool\n\n After fixing repositories:\n  - validate the repository\n  - if validation passes, then use the "pull request" tool, but if it fails, that use the "repair" tool\n\n Repeat this validate → repair → validate loop until the repository passes or you\'ve tried at least 3 repair attempts\n  \n  When a repository is repaired and passes validation:\n  - Use the "pull request" tool to submit a pull request with the fixes\n  - Include all details about the fixes and validation results in the PR creation\n  \n  When given multiple repositories to validate, check each one sequentially and provide a summary of all findings.\n  Focus on providing clear, factual responses about which repositories pass validation and which ones fail.\n  If a validation fails, explain which step failed and why.\n\n  # output format\n\n  create a table showing:\n  - Repository name\n  - Validation status (✅ Pass / ❌ Fail)\n  - Repair status (🔧 Fixed / ⚠️ Unfixable) - if repair was attempted\n  - PR status (📝 Created / 🔄 Updated / ❌ Failed) - if PR was attempted\n  - Failure/fix details\n  .',
 		},
-		{ role: "user", content: "Please validate the reepository TimPietrusky/worker-basic" },
+		{ role: "user", content: "Please validate the repository TimPietrusky/worker-basic" },
 		{
 			role: "assistant",
 			content: "",
@@ -77,7 +75,7 @@ const requestBody = {
 			tool_call_id: "chatcmpl-tool-dbdf120607744a288fe8e78dee9a9905",
 			content:
 				'"- description: Fixed the Dockerfile by correcting the README file name from \\"README\\" to \\"README.md\\" to match the actual file in the repository\\n- files:\\n  - Dockerfile: corrected the COPY command for README.md"',
-		}
+		},
 	],
 	tools: [
 		{
@@ -194,7 +192,7 @@ const requestBody = {
 								additionalProperties: false,
 							},
 							description: "List of fixes that were applied",
-						}
+						},
 					},
 					required: ["repositoryPath", "repository", "fixes"],
 					additionalProperties: false,
@@ -210,30 +208,23 @@ async function sendRequest() {
 	try {
 		console.log("Sending request to RunPod endpoint...");
 
-		const response = await axios.post("https://k0guxrh3tzdbfx-8000.proxy.runpod.net/v1/chat/completions", requestBody, {
-			headers: {
-				"Content-Type": "application/json"
-			},
-		});
+		const response = await axios.post(
+			// `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/openai/v1/chat/completions`,
+			`https://pxb2lb6660repg-8000.proxy.runpod.net/v1/chat/completions`,
+			requestBody,
+			{
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`,
+				},
+			}
+		);
 
 		console.log("Response received:");
 		console.log(JSON.stringify(response.data, null, 2));
 	} catch (error) {
-		console.error("Error sending request:");
-		if (error.response) {
-			// The request was made and the server responded with a status code
-			// that falls out of the range of 2xx
-			console.error("Response status:", error.response.status);
-			console.error("Response data:", error.response.data);
-		} else if (error.request) {
-			// The request was made but no response was received
-			console.error("No response received:", error.request);
-		} else {
-			// Something happened in setting up the request that triggered an Error
-			console.error("Error message:", error.message);
-		}
+		console.error("Error sending request:", error);
 	}
 }
 
-// Run the function
 sendRequest();
