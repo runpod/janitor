@@ -1,10 +1,10 @@
 // Import crypto polyfill first to ensure crypto is available
-import "../mastra/utils/crypto-polyfill.js";
+import "../src/mastra/utils/crypto-polyfill.js";
 
 import fs from "fs/promises";
 import path from "path";
 
-import { mastra } from "../mastra/index.js";
+import { mastra } from "../src/mastra/index.js";
 
 async function main() {
 	try {

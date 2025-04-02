@@ -1,12 +1,11 @@
 import axios from "axios";
-
 import dotenv from "dotenv";
 
 dotenv.config();
 
 // Request body
 const requestBody = {
-	model: process.env.RUNPOD_MODEL,
+	model: process.env.RUNPOD_GENERAL_MODEL,
 	temperature: 0,
 	top_p: 1,
 	messages: [
@@ -295,8 +294,8 @@ async function sendRequest() {
 		console.log("Sending request to RunPod endpoint...");
 
 		const response = await axios.post(
-			`https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/openai/v1/chat/completions`,
-			// `https://pxb2lb6660repg-8000.proxy.runpod.net/v1/chat/completions`,
+			`https://api.runpod.ai/v2/${process.env.RUNPOD_GENERAL_ID}/openai/v1/chat/completions`,
+			// `https://${process.env.RUNPOD_GENERAL_ID}-${process.env.RUNPOD_GENERAL_PORT}.proxy.runpod.net/v1/chat/completions`,
 			requestBody,
 			{
 				headers: {

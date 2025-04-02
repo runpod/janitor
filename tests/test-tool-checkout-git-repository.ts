@@ -1,4 +1,4 @@
-import { checkoutGitRepository } from "../mastra/tools/git-tools";
+import { checkoutGitRepository } from "../src/mastra/tools/git-tools";
 
 async function main() {
 	try {
