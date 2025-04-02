@@ -9,7 +9,7 @@
     "start": "tsx src/index.ts",
     "build": "tsc",
     "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",
-    "test:janitor": "tsx src/tests/test-janitor.ts"
+    "test:janitor": "tsx tests/test-janitor.ts"
   },
   "keywords": [
     "runpod",
