@@ -64,10 +64,7 @@ You follow these steps and use the appropriate tools:
 ### Issues closed
 
 - list of issues that were closed by the changes (if any)
-"""
-
-please make really really sure that the last message you send is a confirmation of the pr creation, not just "5. Now, let's create the PR"!
-`;
+"""`;
 
 /**
  * Parse a repository string to extract owner and repository name
