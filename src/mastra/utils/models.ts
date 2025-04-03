@@ -24,7 +24,7 @@ if (missingEnvVars.length > 0) {
 export const sonnetCoding = anthropic("claude-3-5-sonnet-latest");
 
 export const general = createOpenAI({
-	baseURL: `https://api.runpod.ai/v2/${process.env.RUNPOD_GENERAL_ID}/openai/v1`,
+	baseURL: `https://api.runpod.ai/v2/${process.env.RUNPOD_GENERAL_ENDPOINT_ID}/openai/v1`,
 	apiKey: process.env.RUNPOD_API_KEY,
 	compatibility: "strict",
 	name: "runpod",
