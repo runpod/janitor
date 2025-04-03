@@ -25,19 +25,18 @@ export const pullRequest = createTool({
 	}),
 	description: "Creates or updates a Pull Request for a repository that has been fixed",
 	execute: async ({ context }): Promise<any> => {
-
 		try {
-			console.log(`Initiating PR creation for repository: ${context.repository}`);
-			console.log(`Repository path: ${context.repositoryPath}`);
+			console.log("\n----------------------------------------------------------------");
+			console.log("----------------------------------------------------------------");
+			console.log("🛠️  PULL REQUEST TOOL");
+			console.log("using the 'pr creator' agent");
+			console.log("----------------------------------------------------------------\n");
 
-			try {
-				// Get the mastra instance from our singleton
-				const mastra = getMastraInstance();
+			// Get the mastra instance from our singleton
+			const mastra = getMastraInstance();
+			const agent = mastra.getAgent("prCreatorAgent");
 
-				const agent = mastra.getAgent("prCreatorAgent");
-
-				// Prepare the message for the agent with all necessary details
-				const messageToAgent = `
+			const prompt = `
 - repository: ${context.repository}
 - repository path: ${context.repositoryPath}
 - fixes: 
@@ -45,27 +44,18 @@ export const pullRequest = createTool({
 
 The repository has been successfully fixed and validation has passed.
 
-Return a bullet list with the PR details including whether it was successful, the PR number, URL and a summary of what was done.
+please make really really sure that the last message you send is a confirmation of the pr creation, not just "5. Now, let's create the PR"!
 `;
 
-				// Call the agent to handle the PR creation with structured output
-				console.log("Calling Repository PR Agent to create the PR...");
-				const result = await agent.generate(messageToAgent);
+			const result = await agent.generate(prompt);
 
-				console.log("============= PR CREATOR =============");
-				console.log(result.text);
-				// console.log("--------------------------------");
-				// console.log(JSON.stringify(result.response.messages, null, 2));
-				console.log("================================================\n");
+			console.log("\n----------------------------------------------------------------");
+			console.log("----------------------------------------------------------------");
+			console.log("🤖  PR CREATOR AGENT");
+			console.log(result.text);
+			console.log("----------------------------------------------------------------\n");
 
-				return result.text;
-			} catch (singletonError) {
-				console.error(`Error accessing mastra instance: ${singletonError}`);
-				return {
-					success: false,
-					message: `Error accessing mastra instance: ${singletonError instanceof Error ? singletonError.message : String(singletonError)}`,
-				};
-			}
+			return `the pr was created successfully: ${result.text}`;
 		} catch (error: any) {
 			console.error(`Error creating repository PR: ${error.message}`);
 			return `Failed to create PR: ${error instanceof Error ? error.message : String(error)}`;

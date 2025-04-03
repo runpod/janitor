@@ -26,6 +26,10 @@ const dockerBuildStep = new Step({
 	}),
 	retryConfig,
 	execute: async ({ context }) => {
+		console.log("\n----------------------------------------------------------------");
+		console.log("📊  DOCKER VALIDATION: Step 1: find Dockerfile & build image");
+		console.log("----------------------------------------------------------------\n");
+
 		// Get the repository path from the trigger data
 		const repoPath = context.triggerData.repositoryPath;
 		if (!repoPath) {
@@ -34,8 +38,6 @@ const dockerBuildStep = new Step({
 				error: "Repository path not provided",
 			};
 		}
-
-		console.log(`Finding Dockerfile in repo path: ${repoPath}`);
 
 		try {
 			// Find Dockerfiles in the repository
@@ -111,6 +113,11 @@ const dockerRunStep = new Step({
 			};
 		}
 
+		console.log("\n----------------------------------------------------------------");
+		console.log("📊  DOCKER VALIDATION: Step 2: run container");
+		console.log("----------------------------------------------------------------\n");
+
+
 		const imageName = buildStepResult.imageName;
 		console.log(`Running container from image: ${imageName}`);
 
@@ -171,6 +178,10 @@ const dockerLogsStep = new Step({
 			};
 		}
 
+		console.log("\n----------------------------------------------------------------");
+		console.log("📊  DOCKER VALIDATION: Step 3: check container logs");
+		console.log("----------------------------------------------------------------\n");
+
 		const containerId = runStepResult.containerId;
 		const waitTime = 1000; // Shorter wait time for testing
 		const tail = 100;
@@ -222,6 +233,10 @@ const generateReportStep = new Step({
 	}),
 	retryConfig,
 	execute: async ({ context }) => {
+		console.log("\n----------------------------------------------------------------");
+		console.log("📊  DOCKER VALIDATION: Step 4: generate report to determine validation success");
+		console.log("----------------------------------------------------------------\n");
+
 		const repoPath = context.triggerData.repositoryPath;
 		const repoName = path.basename(repoPath);
 		const buildResult = context.getStepResult(dockerBuildStep);
@@ -231,19 +246,17 @@ const generateReportStep = new Step({
 		const dockerfilePath = buildResult?.dockerfilePath;
 		const imageName = buildResult?.imageName;
 		const containerId = runResult?.containerId;
-		const logs = logsResult?.logs;
-		const lineCount = logsResult?.lineCount;
 
 		// Collect errors from steps
 		const errors: Record<string, string> = {};
 		if (buildResult && !buildResult.success && buildResult.error) {
-			errors.build = buildResult.error;
+			errors.build = buildResult.error.split('\n').slice(-8).join('\n');
 		}
 		if (runResult && !runResult.success && runResult.error) {
-			errors.run = runResult.error;
+			errors.run = runResult.error.split('\n').slice(-8).join('\n');
 		}
 		if (logsResult && !logsResult.success && logsResult.error) {
-			errors.logs = logsResult.error;
+			errors.logs = logsResult.error.split('\n').slice(-8).join('\n');
 		}
 
 		// Determine overall success
@@ -256,40 +269,20 @@ const generateReportStep = new Step({
 			logsResult &&
 			logsResult.success; // Check logs step success flag, not content
 		const overallSuccess = !hasErrors && allStepsCompleted;
+		
 
 		// Generate report
-		const timeNow = new Date().toISOString();
-		const report = `
-# Docker Validation Report: ${repoName}
-*Generated at: ${timeNow}*
+		const report = `# Docker Validation Report
+* repository:${repoName}
+* status: ${overallSuccess ? "✅ passed" : "❌ failed"}
 
-## Summary
-**Overall Success**: ${overallSuccess ? "✅ Passed" : "❌ Failed"}
 ${
 	!overallSuccess && hasErrors
-		? `**Errors**:\n${Object.entries(errors)
+		? `* errors:\n${Object.entries(errors)
 				.map(([step, error]) => `- ${step}: ${error}`)
 				.join("\n")}`
 		: ""
 }
-
-## Validation Steps
-
-### 1. Repository Path
-**Repository Path**: \`${repoPath}\`
-
-### 2. Dockerfile Detection & Build
-**Status**: ${dockerfilePath && imageName ? "✅ Success" : "❌ Failed"}
-${dockerfilePath ? `**Dockerfile Path**: \`${dockerfilePath}\`` : errors.build ? `**Error**: ${errors.build}` : ""}
-${imageName ? `**Image Name**: \`${imageName}\`` : ""}
-
-### 3. Container Execution
-**Status**: ${containerId ? "✅ Success" : "❌ Failed"}
-${containerId ? `**Container ID**: \`${containerId}\`` : errors.run ? `**Error**: ${errors.run}` : ""}
-
-## Conclusion
-The Docker validation process ${overallSuccess ? "completed successfully" : "failed"}. 
-${overallSuccess ? "The container started correctly and is producing logs." : "Please review the errors above."}
 `;
 
 		return {
@@ -310,6 +303,7 @@ export const dockerValidationWorkflow = new Workflow({
 		envVars: z.record(z.string()).optional().describe("Optional environment variables"),
 		command: z.string().optional().describe("Optional command to run in container"),
 	}),
+	retryConfig
 });
 
 // Build workflow with sequential steps

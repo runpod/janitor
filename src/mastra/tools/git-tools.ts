@@ -54,8 +54,6 @@ export const checkoutGitRepository = async (
 	output?: string;
 }> => {
 	try {
-		console.log(`Checking out repository: ${repoName}`);
-
 		// Parse repository owner and name
 		const [owner, repo] = repoName.split("/");
 
@@ -74,9 +72,6 @@ export const checkoutGitRepository = async (
 		const localRepoName = fullRepoName.replace("/", "-");
 		const reposDir = path.join(process.cwd(), "repos");
 		const targetPath = path.join(reposDir, localRepoName);
-
-		console.log(`Using repository URL: ${repoUrl}`);
-		console.log(`Target local path: ${targetPath}`);
 
 		// Create repos directory if it doesn't exist
 		if (!fs.existsSync(reposDir)) {
@@ -191,13 +186,12 @@ export const gitCheckoutTool = createTool({
 	execute: async ({ context }) => {
 		const fullRepoName = context.repository;
 
-		console.log(`===== GIT CHECKOUT OPERATION =====`);
-		console.log(`Repository: ${fullRepoName}`);
-		console.log(`Current working directory: ${process.cwd()}`);
-		console.log(`Repos directory will be: ${path.join(process.cwd(), "repos")}`);
-		console.log(
-			`Target path will be: ${path.join(process.cwd(), "repos", fullRepoName.replace("/", "-"))}`
-		);
+		console.log("\n----------------------------------------------------------------");
+		console.log("----------------------------------------------------------------");
+		console.log("🛠️  GIT CHECKOUT TOOL");
+		console.log(`repository: ${fullRepoName}`);
+		console.log(`target path ${path.join(process.cwd(), "repos", fullRepoName.replace("/", "-"))}`);
+		console.log("----------------------------------------------------------------\n");
 
 		const result = await checkoutGitRepository(fullRepoName, undefined);
 

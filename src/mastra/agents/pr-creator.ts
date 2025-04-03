@@ -22,7 +22,6 @@ export const prResultSchema = z.object({
 	summary: z.string().describe("Summary of what was done"),
 });
 
-// Create MCP Configuration for GitHub server
 export const githubMCP = new MCPConfiguration({
 	id: "github-server-agent",
 	servers: {
@@ -101,4 +100,4 @@ export const create_prCreatorAgent = async () => {
 	}
 };
 
-export const prCreatorAgent = await create_prCreatorAgent();
+export const prCreator = await create_prCreatorAgent();

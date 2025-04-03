@@ -20,10 +20,13 @@ export const dockerValidationTool = createTool({
 		"Validates a Docker repository by building the image, running a container, and checking logs. Requires that the repository has already been checked out.",
 	inputSchema,
 	execute: async ({ context }) => {
-		try {
-			// Use the workflow directly
-			console.log(`Starting Docker validation for repository at path: ${context.repoPath}`);
+		console.log("\n----------------------------------------------------------------");
+		console.log("----------------------------------------------------------------");
+		console.log("🛠️  DOCKER VALIDATION TOOL");
+		console.log(`path: ${context.repoPath}`);
+		console.log("----------------------------------------------------------------\n");
 
+		try {
 			// Extract repository name from the repo path for passing to the workflow
 			const repoPath = context.repoPath;
 

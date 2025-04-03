@@ -28,18 +28,17 @@ async function main() {
 		// Get the repo validator agent
 		const agent = mastra.getAgent("janitor");
 
-		console.log("Running janitor...");
-
 		const response = await agent.generate(
 			"Please validate the repository TimPietrusky/worker-basic"
 		);
 
-		console.log("JANITOR RESPONSE");
-		console.log("--------------------------------");
+		console.log("\n----------------------------------------------------------------");
+		console.log("----------------------------------------------------------------");
+		console.log("🤖  JANITOR AGENT");
 		console.log(response.text);
-		console.log("--------------------------------");
+		console.log("----------------------------------------------------------------");
 		console.log(JSON.stringify(response.response.messages, null, 2));
-		console.log("--------------------------------");
+		console.log("----------------------------------------------------------------\n");
 
 	} catch (error) {
 		console.error("Error running E2E test:", error);
@@ -49,9 +48,7 @@ async function main() {
 main()
 	.then(() => {
 		console.log("Test finished");
-		process.exit(0);
 	})
 	.catch(error => {
 		console.error("Test failed:", error);
-		process.exit(1);
 	});

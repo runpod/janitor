@@ -26,13 +26,11 @@ export const janitor = new Agent({
   When validation fails, you can automatically repair common issues using your repair tools.
   When fixing repositories:
   - First, try to understand the root cause of the failure
-  - Use the Repository Repair tool to fix the issues with the EXACT error, not all information, just the error itself and make SUPER SURE to escape EVERY double quote
+  - Use the repair tool to fix the issues with the EXACT error, not all information, just the error itself and make SUPER SURE to escape EVERY double quote
   - When the repair tool returns with needsRevalidation=true, IMMEDIATELY re-validate the repository using the dockerValidationTool
   - Pass the exact same repository path (repoPath) back to the dockerValidationTool
 
- After fixing repositories:
-  - validate the repository
-  - if validation passes, then use the "pull request" tool, but if it fails, that use the "repair" tool
+ After fixing repositories: validate the repository!
 
  Repeat this validate → repair → validate loop until the repository passes or you've tried at least 3 repair attempts
   

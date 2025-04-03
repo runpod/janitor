@@ -3,8 +3,7 @@ import { createLogger } from "@mastra/core/logger";
 
 import { dev } from "./agents/dev";
 import { janitor } from "./agents/janitor";
-import { prCreatorAgent } from "./agents/pr-creator";
-import { createPlaceholderAgent } from "./utils/agents";
+import { prCreator } from "./agents/pr-creator";
 import { setMastraInstance } from "./utils/mastra";
 import { dockerValidationWorkflow } from "./workflows/docker-validation-workflow";
 
@@ -14,9 +13,9 @@ export const mastra = new Mastra({
 		dockerValidationWorkflow,
 	},
 	agents: {
-		janitor: janitor ?? createPlaceholderAgent("janitor"),
-		dev: dev ?? createPlaceholderAgent("dev"),
-		prCreatorAgent: prCreatorAgent ?? createPlaceholderAgent("pr creator"),
+		janitor,
+		dev,
+		prCreator,
 	},
 	logger: createLogger({
 		name: "Mastra",

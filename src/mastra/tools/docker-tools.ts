@@ -157,7 +157,7 @@ export const findDockerfiles = async (
 	error?: string;
 }> => {
 	try {
-		console.log(`Finding Dockerfiles in repository at: ${repoPath}`);
+		console.log(`Finding Dockerfile in repository at: ${repoPath}`);
 
 		if (!fs.existsSync(repoPath)) {
 			throw new Error(`Repository path does not exist: ${repoPath}`);
@@ -169,11 +169,9 @@ export const findDockerfiles = async (
 
 		if (isWindows) {
 			// Use manual recursive directory scan on Windows
-			console.log("Using manual directory scan to find Dockerfiles (Windows)");
 			dockerfiles = findDockerfilesRecursive(repoPath);
 		} else {
 			// Try find command on Unix-like systems
-			console.log("Using find command to locate Dockerfiles");
 			const findResult = safeExecSync(`find . -name "Dockerfile*" -type f`, repoPath);
 
 			if (!findResult.success) {
@@ -193,7 +191,7 @@ export const findDockerfiles = async (
 			}
 		}
 
-		console.log(`Found ${dockerfiles.length} Dockerfiles:`);
+		console.log(`Found ${dockerfiles.length} Dockerfile(s):`);
 		dockerfiles.forEach(file => console.log(` - ${file}`));
 
 		return {
@@ -227,7 +225,6 @@ function findDockerfilesRecursive(directory: string): string[] {
 						scanDir(itemPath);
 					} else if (item === "Dockerfile" || item.startsWith("Dockerfile.")) {
 						foundFiles.push(itemPath);
-						console.log(`Found potential Dockerfile: ${itemPath}`);
 					}
 				} catch (statError: any) {
 					console.warn(`Unable to stat ${itemPath}: ${statError.message}`);
@@ -280,7 +277,6 @@ export const buildDockerImage = async (
 		}
 
 		console.log(`Building image with name: ${sanitizedImageName}`);
-		console.log(`Using platform: ${platform}`);
 		console.log(`Building from directory: ${dockerfileDir}`);
 
 		// Split the command into command and args for spawn
@@ -295,19 +291,19 @@ export const buildDockerImage = async (
 			".",
 		];
 
-		console.log(`Starting Docker build process (this may take several minutes)...`);
-
-		// Execute docker build command with real-time logging
 		const buildResult = await spawnWithLogs(
 			"docker",
 			buildArgs,
 			dockerfileDir,
 			1200000 // 20 minutes timeout
 		);
-
+		
 		if (!buildResult.success) {
-			console.error(`Docker build failed: ${buildResult.error}`);
-			throw new Error(`Docker build failed: ${buildResult.error}`);
+			console.error(`Docker build failed`);
+			return {
+				success: false,
+				error: buildResult.error,
+			};
 		}
 
 		console.log(`Successfully built Docker image: ${sanitizedImageName}`);
@@ -318,7 +314,6 @@ export const buildDockerImage = async (
 			output: buildResult.output,
 		};
 	} catch (error: any) {
-		console.error(`Error building Docker image: ${error.message}`);
 		return {
 			success: false,
 			error: error.message,
@@ -667,7 +662,6 @@ export const dockerBuildTool = createTool({
 
 		// Step 2: Build the Docker image
 		const platform = context.platform || "linux/amd64";
-		console.log(`Using platform: ${platform}`);
 		console.log(`Building Docker image from: ${dockerfilePath}`);
 
 		const buildResult = await buildDockerImage(dockerfilePath, context.imageName, platform);
