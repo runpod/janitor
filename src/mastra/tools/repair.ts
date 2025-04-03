@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getMastraInstance } from "../utils/mastra";
 
 export const repair = createTool({
-	id: "Repository Repair",
+	id: "repair",
 	inputSchema: z.object({
 		repository: z.string().describe("Repository name (owner/repo)"),
 		repoPath: z.string().describe("Path to the checked out repository"),
@@ -44,7 +44,7 @@ ${context.errors}
 
 			console.log("\n----------------------------------------------------------------");
 			console.log("----------------------------------------------------------------");
-			console.log("🤖  DEV AGENT");
+			console.log("🤖  dev");
 			console.log(repairResponse.text);
 			console.log("----------------------------------------------------------------\n");
 

@@ -1,17 +1,9 @@
-// Import crypto polyfill first to ensure crypto is available
-import "../utils/crypto-polyfill";
-
 // Import from the specific path as recommended
 import { Agent } from "@mastra/core/agent";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import {
-	editFileTool,
-	fileReadTool,
-	fileSearchTool,
-	listDirectoryTool,
-} from "../tools/file-system-tools";
+import { edit_file, list_files, read_file, search } from "../tools/file-system-tools";
 import { createBasicMemory } from "../utils/memory";
 import { getModel } from "../utils/models";
 
@@ -64,9 +56,6 @@ only provide the following output, nothing else:
   - Dockerfile: fixed an issue with COPY
 `;
 
-/**
- * Creates a Repository Repair Agent using Claude-3-7-Sonnet
- */
 export const create_dev = () => {
 	// Create agent with the appropriate AI model
 	const agent = new Agent({
@@ -74,10 +63,10 @@ export const create_dev = () => {
 		instructions: REPAIR_AGENT_INSTRUCTIONS,
 		model: getModel("coding"),
 		tools: {
-			fileReadTool,
-			listDirectoryTool,
-			fileSearchTool,
-			editFileTool,
+			read_file,
+			list_files,
+			search,
+			edit_file,
 		},
 		memory: createBasicMemory(),
 	});
@@ -85,5 +74,4 @@ export const create_dev = () => {
 	return agent;
 };
 
-// Initialize and export the agent
 export const dev = create_dev();

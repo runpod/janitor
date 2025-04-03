@@ -117,7 +117,6 @@ const dockerRunStep = new Step({
 		console.log("📊  DOCKER VALIDATION: Step 2: run container");
 		console.log("----------------------------------------------------------------\n");
 
-
 		const imageName = buildStepResult.imageName;
 		console.log(`Running container from image: ${imageName}`);
 
@@ -234,7 +233,9 @@ const generateReportStep = new Step({
 	retryConfig,
 	execute: async ({ context }) => {
 		console.log("\n----------------------------------------------------------------");
-		console.log("📊  DOCKER VALIDATION: Step 4: generate report to determine validation success");
+		console.log(
+			"📊  DOCKER VALIDATION: Step 4: generate report to determine validation success"
+		);
 		console.log("----------------------------------------------------------------\n");
 
 		const repoPath = context.triggerData.repositoryPath;
@@ -250,13 +251,13 @@ const generateReportStep = new Step({
 		// Collect errors from steps
 		const errors: Record<string, string> = {};
 		if (buildResult && !buildResult.success && buildResult.error) {
-			errors.build = buildResult.error.split('\n').slice(-8).join('\n');
+			errors.build = buildResult.error.split("\n").slice(-8).join("\n");
 		}
 		if (runResult && !runResult.success && runResult.error) {
-			errors.run = runResult.error.split('\n').slice(-8).join('\n');
+			errors.run = runResult.error.split("\n").slice(-8).join("\n");
 		}
 		if (logsResult && !logsResult.success && logsResult.error) {
-			errors.logs = logsResult.error.split('\n').slice(-8).join('\n');
+			errors.logs = logsResult.error.split("\n").slice(-8).join("\n");
 		}
 
 		// Determine overall success
@@ -269,13 +270,11 @@ const generateReportStep = new Step({
 			logsResult &&
 			logsResult.success; // Check logs step success flag, not content
 		const overallSuccess = !hasErrors && allStepsCompleted;
-		
 
 		// Generate report
 		const report = `# Docker Validation Report
 * repository:${repoName}
 * status: ${overallSuccess ? "✅ passed" : "❌ failed"}
-
 ${
 	!overallSuccess && hasErrors
 		? `* errors:\n${Object.entries(errors)
@@ -303,7 +302,7 @@ export const dockerValidationWorkflow = new Workflow({
 		envVars: z.record(z.string()).optional().describe("Optional environment variables"),
 		command: z.string().optional().describe("Optional command to run in container"),
 	}),
-	retryConfig
+	retryConfig,
 });
 
 // Build workflow with sequential steps

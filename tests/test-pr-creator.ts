@@ -3,7 +3,7 @@ import { mastra } from "../mastra";
 async function main() {
 	try {
 		// Create the repository PR agent directly
-		const agent = mastra.getAgent("prCreatorAgent");
+		const agent = mastra.getAgent("prCreator");
 		if (!agent) {
 			console.error("Failed to create Repository PR Agent!");
 			return;

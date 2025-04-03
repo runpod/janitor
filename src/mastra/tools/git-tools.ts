@@ -177,8 +177,8 @@ export const checkoutGitRepository = async (
 };
 
 // Export as a tool for use with Mastra
-export const gitCheckoutTool = createTool({
-	id: "Git Checkout",
+export const git_checkout = createTool({
+	id: "git_checkout",
 	inputSchema: z.object({
 		repository: z.string().describe("Full repository name (e.g., 'organization/repo-name')"),
 	}),
@@ -190,7 +190,9 @@ export const gitCheckoutTool = createTool({
 		console.log("----------------------------------------------------------------");
 		console.log("🛠️  GIT CHECKOUT TOOL");
 		console.log(`repository: ${fullRepoName}`);
-		console.log(`target path ${path.join(process.cwd(), "repos", fullRepoName.replace("/", "-"))}`);
+		console.log(
+			`target path ${path.join(process.cwd(), "repos", fullRepoName.replace("/", "-"))}`
+		);
 		console.log("----------------------------------------------------------------\n");
 
 		const result = await checkoutGitRepository(fullRepoName, undefined);

@@ -7,7 +7,6 @@ import { prCreator } from "./agents/pr-creator";
 import { setMastraInstance } from "./utils/mastra";
 import { dockerValidationWorkflow } from "./workflows/docker-validation-workflow";
 
-// Initialize the Mastra instance with proper configuration
 export const mastra = new Mastra({
 	workflows: {
 		dockerValidationWorkflow,
@@ -23,5 +22,4 @@ export const mastra = new Mastra({
 	}),
 });
 
-// Register the mastra instance with our singleton utility
 setMastraInstance(mastra);

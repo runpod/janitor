@@ -1,12 +1,9 @@
-// Import crypto polyfill first to ensure crypto is available
-import "../utils/crypto-polyfill";
-
 import { Agent } from "@mastra/core/agent";
 import { MCPConfiguration } from "@mastra/mcp";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import { fileReadTool } from "../tools/file-system-tools";
+import { read_file } from "../tools/file-system-tools";
 import { getModel } from "../utils/models";
 
 // Load environment variables
@@ -68,6 +65,8 @@ You follow these steps and use the appropriate tools:
 
 - list of issues that were closed by the changes (if any)
 """
+
+please make really really sure that the last message you send is a confirmation of the pr creation, not just "5. Now, let's create the PR"!
 `;
 
 /**
@@ -84,20 +83,16 @@ export const parseRepository = (repository: string): { owner: string; repo: stri
 	return { owner: "runpod-workers", repo: repository };
 };
 
-export const create_prCreatorAgent = async () => {
-	try {
-		// Get all GitHub MCP tools
-		const githubTools = await githubMCP.getTools();
+export const create_prCreator = async () => {
+	// Get all GitHub MCP tools
+	const githubTools = await githubMCP.getTools();
 
-		return new Agent({
-			name: "pr creator",
-			instructions: PR_AGENT_INSTRUCTIONS,
-			model: getModel("coding"),
-			tools: { ...githubTools, fileReadTool },
-		});
-	} catch (error) {
-		console.error("Failed to create Repository PR Agent:", error);
-	}
+	return new Agent({
+		name: "pr creator",
+		instructions: PR_AGENT_INSTRUCTIONS,
+		model: getModel("coding"),
+		tools: { ...githubTools, read_file },
+	});
 };
 
-export const prCreator = await create_prCreatorAgent();
+export const prCreator = await create_prCreator();

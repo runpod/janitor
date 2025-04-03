@@ -1,7 +1,4 @@
-// Import crypto polyfill first to ensure crypto is available
-import "../mastra/utils/crypto-polyfill.js";
-
-import { mastra } from "../mastra/index.js";
+import { mastra } from "../src/mastra/index.js";
 
 async function testDockerValidationWorkflow() {
 	try {

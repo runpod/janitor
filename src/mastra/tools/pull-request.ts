@@ -9,8 +9,8 @@ import { getMastraInstance } from "../utils/mastra";
  * This tool serves as an integration point between the Repository Validator and the PR workflow,
  * enabling PR creation after successful validation and repairs.
  */
-export const pullRequest = createTool({
-	id: "pull request",
+export const pull_request = createTool({
+	id: "pull_request",
 	inputSchema: z.object({
 		repositoryPath: z.string().describe("Local path to the repository"),
 		repository: z.string().describe("Repository in the format 'owner/repo'"),
@@ -34,24 +34,22 @@ export const pullRequest = createTool({
 
 			// Get the mastra instance from our singleton
 			const mastra = getMastraInstance();
-			const agent = mastra.getAgent("prCreatorAgent");
+			const agent = mastra.getAgent("prCreator");
 
-			const prompt = `
+			const prompt = `please create the pull request for:
+
 - repository: ${context.repository}
 - repository path: ${context.repositoryPath}
 - fixes: 
   ${context.fixes.map(fix => `- ${fix.file}: ${fix.description}`).join("\n")}
-
-The repository has been successfully fixed and validation has passed.
-
-please make really really sure that the last message you send is a confirmation of the pr creation, not just "5. Now, let's create the PR"!
 `;
 
 			const result = await agent.generate(prompt);
 
 			console.log("\n----------------------------------------------------------------");
 			console.log("----------------------------------------------------------------");
-			console.log("🤖  PR CREATOR AGENT");
+			console.log("🤖  pr creator");
+			console.log("----------------------------------------------------------------");
 			console.log(result.text);
 			console.log("----------------------------------------------------------------\n");
 

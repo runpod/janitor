@@ -350,9 +350,8 @@ export const editFileContent = async (
 	}
 };
 
-// Export tools for use with Mastra
-export const fileReadTool = createTool({
-	id: "File Reader",
+export const read_file = createTool({
+	id: "read_file",
 	inputSchema: z.object({
 		filePath: z.string().describe("Path to the file to read"),
 		offset: z.number().optional().describe("Line number to start reading from (0-based)"),
@@ -370,8 +369,8 @@ export const fileReadTool = createTool({
 	},
 });
 
-export const listDirectoryTool = createTool({
-	id: "Directory Lister",
+export const list_files = createTool({
+	id: "list_files",
 	inputSchema: z.object({
 		dirPath: z.string().describe("Path to the directory to list"),
 		recursive: z.boolean().optional().describe("Whether to list subdirectories recursively"),
@@ -389,8 +388,8 @@ export const listDirectoryTool = createTool({
 	},
 });
 
-export const fileSearchTool = createTool({
-	id: "File Searcher",
+export const search = createTool({
+	id: "search",
 	inputSchema: z.object({
 		searchPath: z.string().describe("Base path to search in"),
 		pattern: z
@@ -413,8 +412,8 @@ export const fileSearchTool = createTool({
 	},
 });
 
-export const editFileTool = createTool({
-	id: "File Editor",
+export const edit_file = createTool({
+	id: "edit_file",
 	inputSchema: z.object({
 		filePath: z.string().describe("Path to the file to edit"),
 		content: z.string().nullable().describe("New content (or null to delete the file)"),

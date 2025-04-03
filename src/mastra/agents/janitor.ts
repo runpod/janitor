@@ -1,12 +1,9 @@
-// Import crypto polyfill first to ensure crypto is available
-import "../utils/crypto-polyfill";
-
 // Import from the specific path as recommended
 import { Agent } from "@mastra/core/agent";
 
-import { dockerValidationTool } from "../tools/docker-validation-tool";
-import { gitCheckoutTool } from "../tools/git-tools";
-import { pullRequest } from "../tools/pull-request.js";
+import { docker_validation } from "../tools/docker-validation-tool";
+import { git_checkout } from "../tools/git-tools";
+import { pull_request } from "../tools/pull-request.js";
 import { repair } from "../tools/repair";
 import { createBasicMemory } from "../utils/memory.js";
 import { getModel } from "../utils/models.js";
@@ -42,6 +39,8 @@ export const janitor = new Agent({
   Focus on providing clear, factual responses about which repositories pass validation and which ones fail.
   If a validation fails, explain which step failed and why.
 
+  When the pull request is created, make sure to provide a report to the user with everything needed to understand was has been done, see "output format"
+
   # output format
 
   create a table showing:
@@ -53,10 +52,10 @@ export const janitor = new Agent({
   `,
 	model: getModel("general"),
 	tools: {
-		gitCheckoutTool,
-		dockerValidationTool,
+		git_checkout,
+		docker_validation,
 		repair,
-		pullRequest,
+		pull_request,
 	},
 	memory: createBasicMemory(),
 });

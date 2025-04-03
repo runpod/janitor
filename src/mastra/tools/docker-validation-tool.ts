@@ -14,8 +14,8 @@ const inputSchema = z.object({
 });
 
 // Create the Docker validation tool
-export const dockerValidationTool = createTool({
-	id: "Docker Repository Validator",
+export const docker_validation = createTool({
+	id: "docker_validation",
 	description:
 		"Validates a Docker repository by building the image, running a container, and checking logs. Requires that the repository has already been checked out.",
 	inputSchema,
