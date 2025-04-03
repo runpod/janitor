@@ -9,10 +9,10 @@ dotenv.config({ path: ".env" });
 const requiredEnvVars = [
 	"ANTHROPIC_API_KEY",
 	"OPENAI_API_KEY",
-	"RUNPOD_GENERAL_ID",
+	"RUNPOD_GENERAL_ENDPOINT_ID",
 	"RUNPOD_GENERAL_MODEL",
-	"RUNPOD_CODING_ID",
-	"RUNPOD_CODING_MODEL",
+	// "RUNPOD_CODING_ENDPOINT_ID",
+	// "RUNPOD_CODING_MODEL",
 ];
 
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
