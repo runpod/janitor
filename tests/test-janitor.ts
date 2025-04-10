@@ -56,7 +56,9 @@ async function main() {
 main()
 	.then(() => {
 		console.log("Test finished");
+		process.exit(0);
 	})
 	.catch(error => {
 		console.error("Test failed:", error);
+		process.exit(1);
 	});
