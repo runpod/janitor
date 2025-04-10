@@ -350,6 +350,59 @@ export const editFileContent = async (
 	}
 };
 
+/**
+ * Create a directory recursively if it doesn't exist
+ */
+export const createDirectory = async (
+	dirPath: string
+): Promise<{
+	success: boolean;
+	path?: string;
+	error?: string;
+}> => {
+	try {
+		const resolvedPath = path.resolve(dirPath);
+		console.log(`Creating directory: ${resolvedPath}`);
+
+		// Check if it already exists and is a directory
+		try {
+			const stats = await fs.stat(resolvedPath);
+			if (stats.isDirectory()) {
+				return {
+					success: true,
+					path: resolvedPath,
+					error: "Directory already exists.", // Not strictly an error, but informational
+				};
+			}
+			// If it exists but is not a directory, it's an error
+			return {
+				success: false,
+				error: `Path exists but is not a directory: ${resolvedPath}`,
+			};
+		} catch (error: any) {
+			// If stat fails, it likely doesn't exist, which is expected
+			if (error.code !== "ENOENT") {
+				throw error; // Re-throw unexpected errors
+			}
+		}
+
+		// Create the directory recursively
+		await fs.mkdir(resolvedPath, { recursive: true });
+		console.log(`Directory created successfully: ${resolvedPath}`);
+
+		return {
+			success: true,
+			path: resolvedPath,
+		};
+	} catch (error: any) {
+		console.error(`Error creating directory: ${error.message}`);
+		return {
+			success: false,
+			error: `Failed to create directory: ${error.message}`,
+		};
+	}
+};
+
 export const read_file = createTool({
 	id: "read_file",
 	inputSchema: z.object({
@@ -430,6 +483,18 @@ export const edit_file = createTool({
 			context.createIfNotExists ?? true
 		);
 
+		return result;
+	},
+});
+
+export const create_directory = createTool({
+	id: "create_directory",
+	inputSchema: z.object({
+		dirPath: z.string().describe("Path to the directory to create"),
+	}),
+	description: "Creates a directory, including any necessary parent directories.",
+	execute: async ({ context }) => {
+		const result = await createDirectory(context.dirPath);
 		return result;
 	},
 });

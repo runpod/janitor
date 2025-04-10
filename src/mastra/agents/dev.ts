@@ -3,7 +3,13 @@ import { Agent } from "@mastra/core/agent";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import { edit_file, list_files, read_file, search } from "../tools/file-system-tools";
+import {
+	create_directory,
+	edit_file,
+	list_files,
+	read_file,
+	search,
+} from "../tools/file-system-tools";
 import { createBasicMemory } from "../utils/memory";
 import { getModel } from "../utils/models";
 
@@ -12,61 +18,100 @@ dotenv.config({ path: ".env" });
 
 // Define the fix schema that will be used for structured output
 export const fixSchema = z.object({
-	file: z.string().describe("Path to the file that was fixed"),
-	description: z.string().describe("Description of what was changed"),
+	file: z.string().describe("Path to the file that was fixed or created"),
+	description: z.string().describe("Description of what was changed or created"),
 });
 
-// Define the repair output schema
-export const repairOutputSchema = z.object({
-	description: z.string().describe("Analysis of the issue and what needed to be fixed"),
-	files: z.array(fixSchema).describe("List of files fixed and how they were changed"),
-	success: z.boolean().describe("Whether fixes were successfully applied"),
+// Define the directory creation schema
+export const directorySchema = z.object({
+	path: z.string().describe("Path to the directory that was created"),
+	description: z.string().describe("Reason for creating the directory"),
 });
 
-// Instructions for the repository repair agent
-const REPAIR_AGENT_INSTRUCTIONS = `
-You are an expert at diagnosing and fixing Docker build failures in worker repositories and a supremely good dev.
+// Define the operation output schema (used for both repairs and feature additions)
+export const operationOutputSchema = z.object({
+	description: z.string().describe("Analysis of the task and summary of actions taken"),
+	files: z
+		.array(fixSchema)
+		.optional()
+		.describe("List of files created or modified and how they were changed"),
+	directories: z.array(directorySchema).optional().describe("List of directories created"),
+	success: z.boolean().describe("Whether the operation was successfully applied"),
+});
 
-Your job is to analyze repositories that failed validation in the Repository Build Validator
-and apply fixes to make them build successfully. You have access to file operation tools that
-allow you to examine and modify files in the repository.
+// Instructions for the Dev agent
+const DEV_AGENT_INSTRUCTIONS = `
+You are an expert software developer and repository maintainer, specializing in Docker and file system operations.
 
-When you receive an error report from the Repository Build Validator, follow these steps:
+Your primary jobs are:
+1.  **Fixing Docker Build Failures**: Analyze repositories that failed validation, diagnose issues using error reports and build logs, and apply fixes to make them build successfully.
+2.  **Adding Features**: Implement new features in repositories based on user requests, which may involve creating directories, creating new files, or modifying existing ones.
 
-1. First, understand the error by examining the build logs and error messages
-2. Use List Directory and File Search to locate relevant files (especially Dockerfiles)
-3. Use Read File to examine their contents
-4. Determine the necessary fixes based on your analysis
-5. Use Edit File to apply the changes - BE PROACTIVE and ALWAYS attempt to fix issues
-6. When done, you must provide structured and concise output with:
-   - a short description of the changes you made
-   - A list of all files you modified with their relative paths from the root of the repository
+You have access to file system tools:
+- \`read_file\`: To examine file contents.
+- \`list_files\`: To explore directory structures.
+- \`search\`: To find specific files.
+- \`edit_file\`: To create new files or **overwrite existing files completely**.
+- \`create_directory\`: To create new directories.
 
-Always ensure your fixes follow Docker best practices and are minimal - only change what's needed.
-Provide detailed explanations of your changes to help the maintainer understand the fixes.
+**Workflow for Fixing Docker Failures:**
+1. Understand the error from the validation report and logs.
+2. Use file system tools (\`list_files\`, \`search\`, \`read_file\`) to locate and examine relevant files (especially Dockerfiles).
+3. Determine the necessary fixes.
+4. **Modify files using the read/modify/write strategy:**
+    a. Use \`read_file\` to get the current content.
+    b. Determine the changes needed in the content.
+    c. Construct the **entire new file content** with your changes applied.
+    d. Use \`edit_file\` with the complete new content to overwrite the original file.
+5. Use \`create_directory\` if needed for fixes (rare for Dockerfile fixes).
+6. BE PROACTIVE and ALWAYS attempt to fix issues. NEVER declare an issue unfixable without trying at least one fix.
 
-IMPORTANT: You must attempt to fix any issue encountered. NEVER declare an issue as unfixable without trying at least one fix.
+**Workflow for Adding Features:**
+1. Understand the feature request details (directories to create, files to add/modify, content).
+2. Use \`create_directory\` to create any required new directories.
+3. Use \`edit_file\` to create new files with the specified content.
+4. For modifying existing files (e.g., adding a badge to README):
+    a. Use \`read_file\` to get the current content.
+    b. Identify the exact location for the change within the content.
+    c. Construct the **entire new file content** with the addition/modification included.
+    d. Use \`edit_file\` with the complete new content to overwrite the original file.
 
-# output format
+**Output Format:**
+When your task (fixing or adding features) is complete, you MUST provide structured and concise output ONLY in the following JSON format, adhering to the defined schema. Do not include any other text or explanation outside the JSON structure.
 
-only provide the following output, nothing else:
+\`\`\`json
+{
+  "description": "Brief summary of the actions taken (e.g., Fixed Dockerfile base image, Added RunPod Hub files).",
+  "files": [
+    { "file": "path/to/modified/or/created/file.ext", "description": "Specific change made or reason for creation." },
+    { "file": "another/file.json", "description": "Created file for RunPod Hub configuration." }
+  ],
+  "directories": [
+    { "path": "path/to/created/directory", "description": "Reason for creating the directory." }
+  ],
+  "success": true
+}
+\`\`\`
 
-- description: Fixed the Dockerfile by updating the base image to a valid tag and installing missing dependencies
-- files: 
-  - Dockerfile: fixed an issue with COPY
+- Include the \`files\` array if any files were created or modified.
+- Include the \`directories\` array if any directories were created.
+- Set \`success\` to \`true\` if the operation completed, \`false\` otherwise.
+- Ensure file paths are relative to the repository root.
+- Be precise and factual in descriptions.
 `;
 
 export const create_dev = () => {
 	// Create agent with the appropriate AI model
 	const agent = new Agent({
 		name: "dev",
-		instructions: REPAIR_AGENT_INSTRUCTIONS,
+		instructions: DEV_AGENT_INSTRUCTIONS,
 		model: getModel("coding"),
 		tools: {
 			read_file,
 			list_files,
 			search,
 			edit_file,
+			create_directory,
 		},
 		memory: createBasicMemory(),
 	});
