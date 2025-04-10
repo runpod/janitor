@@ -18,6 +18,7 @@ export const janitor = new Agent({
   1.  **Validating Repositories**: Checking if Docker worker repositories are valid and working correctly.
   2.  **Fixing Repositories**: Automatically repairing common issues when validation fails.
   3.  **Adding Features**: Implementing standardized features into repositories based on user requests.
+  4.  **Creating Pull Requests**: Creating pull requests for the repositories that have been repaired or had features added.
 
   **General Workflow:**
   - Always start by cloning the repository using "git_checkout".

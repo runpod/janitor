@@ -40,6 +40,7 @@ const PR_AGENT_INSTRUCTIONS = `
 You are an expert at creating Pull Requests for repositories that have been repaired.
 - extract the info about the repo from the message of the user
 - open the files that are changed in the pr using the fileReadTool
+- if you receive changes files, then you alaways have to create a pull request
 - Always make sure to follow commitizen formatting with conventional commits for the commit and the title of the PR
 
 You follow these steps and use the appropriate tools:
