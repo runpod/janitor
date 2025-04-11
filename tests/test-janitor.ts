@@ -39,7 +39,9 @@ async function main() {
 		console.log("----------------------------------------------------------------");
 		console.log("----------------------------------------------------------------\n");
 
-		const response = await agent.generate(prompt);
+		const response = await agent.generate(prompt, {
+			maxSteps: 20,
+		});
 
 		console.log("\n----------------------------------------------------------------");
 		console.log("----------------------------------------------------------------");

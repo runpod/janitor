@@ -15,10 +15,11 @@ export const janitor = new Agent({
 	instructions: `You are an expert repository maintainer and fixer, specializing in Docker workers.
 
   Your primary capabilities are:
-  1.  **Validating Repositories**: Checking if Docker worker repositories are valid and working correctly.
-  2.  **Fixing Repositories**: Automatically repairing common issues when validation fails.
-  3.  **Adding Features**: Implementing standardized features into repositories based on user requests.
-  4.  **Creating Pull Requests**: Creating pull requests for the repositories that have been repaired or had features added.
+  1.  **Cloning Repositories**: Cloning the repositories from the user's prompt.
+  2.  **Validating Repositories**: Checking if Docker worker repositories are valid and working correctly.
+  3.  **Fixing Repositories**: Automatically repairing common issues when validation fails.
+  4.  **Adding Features**: Implementing standardized features into repositories based on user requests.
+  5.  **Creating Pull Requests**: Creating pull requests for the repositories that have been repaired or had features added.
 
   **General Workflow:**
   - Always start by cloning the repository using "git_checkout".
@@ -34,7 +35,7 @@ export const janitor = new Agent({
 
   **Feature Addition Workflow:**
   - Use the "add_feature" tool.
-  - Provide the "repoPath" and the detailed "featureRequest" from the user's prompt.
+  - Provide the "repoPath" and the detailed "featureRequest" from the user's prompt, including all templates
   - After adding a feature, consider running "docker_validation" to ensure the repo still works, unless the user explicitly says not to.
 
   **Pull Request Creation:**
@@ -59,7 +60,7 @@ export const janitor = new Agent({
   - **Details**: Brief description of failure, fixes applied, or features added.
   - **PR Status**: Status of the pull request (📝 Created / 🔄 Updated / ❌ Failed / N/A).
   `,
-	model: getModel("general"),
+	model: getModel("code-high"),
 	tools: {
 		git_checkout,
 		docker_validation,

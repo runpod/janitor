@@ -498,3 +498,61 @@ export const create_directory = createTool({
 		return result;
 	},
 });
+
+/**
+ * Move or rename a file or directory
+ */
+export const moveFileOrDirectory = async (
+	sourcePath: string,
+	destinationPath: string
+): Promise<{
+	success: boolean;
+	error?: string;
+}> => {
+	const resolvedSource = path.resolve(sourcePath);
+	const resolvedDestination = path.resolve(destinationPath);
+	console.log(`Moving/Renaming from ${resolvedSource} to ${resolvedDestination}`);
+
+	try {
+		// Check if source exists
+		try {
+			await fs.access(resolvedSource);
+		} catch (error) {
+			return {
+				success: false,
+				error: `Source path does not exist or is not accessible: ${resolvedSource}`,
+			};
+		}
+
+		// Ensure destination directory exists
+		const destDir = path.dirname(resolvedDestination);
+		await fs.mkdir(destDir, { recursive: true });
+
+		// Perform the move/rename operation
+		await fs.rename(resolvedSource, resolvedDestination);
+
+		console.log(`Successfully moved/renamed ${resolvedSource} to ${resolvedDestination}`);
+		return { success: true };
+	} catch (error: any) {
+		console.error(`Error moving/renaming file/directory: ${error.message}`);
+		return {
+			success: false,
+			error: `Failed to move/rename: ${error.message}`,
+		};
+	}
+};
+
+export const move_file = createTool({
+	id: "move_file",
+	inputSchema: z.object({
+		sourcePath: z
+			.string()
+			.describe("The current path of the file or directory to move/rename."),
+		destinationPath: z.string().describe("The new path for the file or directory."),
+	}),
+	description: "Moves or renames a file or directory.",
+	execute: async ({ context }) => {
+		const result = await moveFileOrDirectory(context.sourcePath, context.destinationPath);
+		return result;
+	},
+});

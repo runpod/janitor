@@ -2,10 +2,11 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 import { operationOutputSchema } from "../agents/dev"; // Import the output schema from Dev agent
+import { getMastraInstance } from "../utils/mastra";
 
 // Define the input schema for the feature addition tool
 const featureAdditionInputSchema = z.object({
-	repoPath: z.string().describe("The local file system path to the checked-out repository."),
+	repoPath: z.string().describe("Path to the checked out repository"),
 	featureRequest: z
 		.string()
 		.describe(
@@ -14,7 +15,7 @@ const featureAdditionInputSchema = z.object({
 });
 
 // Define the output schema for the feature addition tool (should match Dev agent's output)
-const featureAdditionOutputSchema = operationOutputSchema; // Reuse the schema
+const featureAdditionOutputSchema = operationOutputSchema;
 
 /**
  * Tool to invoke the Dev agent for adding features to a repository.
@@ -24,8 +25,8 @@ export const add_feature = createTool({
 	description:
 		"Invokes the Dev agent to add a specified feature (create directories/files, modify files) to the repository.",
 	inputSchema: featureAdditionInputSchema,
-	outputSchema: featureAdditionOutputSchema, // Ensure tool output matches Dev agent's structured output
-	execute: async ({ context, mastra }) => {
+	outputSchema: featureAdditionOutputSchema,
+	execute: async ({ context }) => {
 		try {
 			console.log("\n----------------------------------------------------------------");
 			console.log("----------------------------------------------------------------");
@@ -33,71 +34,49 @@ export const add_feature = createTool({
 			console.log("using the 'dev' agent");
 			console.log("----------------------------------------------------------------\n");
 
-			console.log(`Adding feature to repo at: ${context.repoPath}`);
-			console.log(`Feature Request Details: ${context.featureRequest}`);
-
-			// Ensure Mastra instance is available
-			if (!mastra) {
-				throw new Error("Mastra instance is not available in the tool execution context.");
-			}
-
 			// Get the Dev agent instance
+			const mastra = getMastraInstance();
 			const devAgent = mastra.getAgent("dev");
-			if (!devAgent) {
-				throw new Error("Dev agent instance not found.");
-			}
-
-			// Construct the prompt for the Dev agent
-			// The Dev agent expects the task description directly.
-			const devPrompt = `Add the following feature to the repository located at "${context.repoPath}":\n\n${context.featureRequest}\n\nEnsure you follow the required JSON output format.`;
+			const devPrompt = `**full path to repository**: "${context.repoPath}".
+**feature request**: ${context.featureRequest}`;
 
 			console.log(`Prompting Dev Agent: ${devPrompt}`);
 
 			// Call the Dev agent
-			const response = await devAgent.generate(devPrompt);
+			const response = await devAgent.generate(devPrompt, {
+				maxSteps: 20,
+			});
 
 			console.log("Dev Agent Raw Response Text:", response.text);
 
 			// Attempt to parse the structured JSON output from the Dev agent's response text
 			let structuredOutput;
 			try {
-				// Extract JSON block if present
-				const jsonMatch = response.text.match(/```json\n([\s\S]*?)\n```/);
-				if (jsonMatch && jsonMatch[1]) {
-					structuredOutput = JSON.parse(jsonMatch[1]);
-					console.log("Parsed structured output from Dev Agent:", structuredOutput);
-					// Validate against the schema
-					const validationResult =
-						featureAdditionOutputSchema.safeParse(structuredOutput);
-					if (!validationResult.success) {
-						console.error(
-							"Dev agent output validation failed:",
-							validationResult.error
-						);
-						throw new Error(
-							`Dev agent returned output that failed schema validation: ${validationResult.error.message}`
-						);
-					}
-					// Return the validated, structured output directly
-					return validationResult.data;
-				}
-				// Fallback: Try parsing the whole text if no JSON block found
+				// Directly parse the entire response text as JSON
 				structuredOutput = JSON.parse(response.text);
+				console.log("Parsed structured output from Dev Agent:", structuredOutput);
+
+				// Validate against the schema
 				const validationResult = featureAdditionOutputSchema.safeParse(structuredOutput);
+
 				if (!validationResult.success) {
-					console.error(
-						"Dev agent output validation failed (fallback parsing):",
-						validationResult.error
-					);
-					throw new Error(
-						`Dev agent returned output that failed schema validation: ${validationResult.error.message}`
-					);
+					// Log validation error and return failure state
+					console.error("Dev agent output validation failed:", validationResult.error);
+					return {
+						description:
+							"Dev agent returned output that failed schema validation: " +
+							validationResult.error.message,
+						success: false,
+						files: [],
+						directories: [],
+					};
 				}
-				console.log("Parsed structured output (fallback):", structuredOutput);
+
+				// Return the validated, structured output directly
 				return validationResult.data;
 			} catch (parseError: any) {
+				// Log parsing error and return failure state
 				console.error("Failed to parse JSON output from Dev agent:", parseError);
-				// Return a failure state if parsing fails
 				return {
 					description:
 						"Failed to parse the Dev agent's response. Raw response: " + response.text,
@@ -117,6 +96,3 @@ export const add_feature = createTool({
 		}
 	},
 });
-
-// Add export to index if needed
-// export { add_feature };

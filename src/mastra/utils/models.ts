@@ -21,7 +21,8 @@ if (missingEnvVars.length > 0) {
 	console.warn("Some AI providers may not function correctly");
 }
 
-export const sonnetCoding = anthropic("claude-3-5-sonnet-latest");
+export const sonnetCodeHigh = anthropic("claude-3-7-sonnet-latest");
+export const sonnetCodeMedium = anthropic("claude-3-5-sonnet-latest");
 
 export const general = createOpenAI({
 	baseURL: `https://api.runpod.ai/v2/${process.env.RUNPOD_GENERAL_ENDPOINT_ID}/openai/v1`,
@@ -32,6 +33,6 @@ export const general = createOpenAI({
 
 export const runpodGeneral = general(process.env.RUNPOD_GENERAL_MODEL as string);
 
-export const getModel = (type: "coding" | "general" = "general"): LanguageModelV1 => {
-	return (type === "coding" ? sonnetCoding : runpodGeneral) as LanguageModelV1;
+export const getModel = (type: "code-high" | "code-medium" = "code-medium"): LanguageModelV1 => {
+	return (type === "code-high" ? sonnetCodeHigh : sonnetCodeMedium) as LanguageModelV1;
 };

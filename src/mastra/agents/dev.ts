@@ -7,6 +7,7 @@ import {
 	create_directory,
 	edit_file,
 	list_files,
+	move_file,
 	read_file,
 	search,
 } from "../tools/file-system-tools";
@@ -53,6 +54,7 @@ You have access to file system tools:
 - \`search\`: To find specific files.
 - \`edit_file\`: To create new files or **overwrite existing files completely**.
 - \`create_directory\`: To create new directories.
+- \`move_file\`: To move or rename files or directories.
 
 **Workflow for Fixing Docker Failures:**
 1. Understand the error from the validation report and logs.
@@ -64,6 +66,7 @@ You have access to file system tools:
     c. Construct the **entire new file content** with your changes applied.
     d. Use \`edit_file\` with the complete new content to overwrite the original file.
 5. Use \`create_directory\` if needed for fixes (rare for Dockerfile fixes).
+6. Use \`move_file\` if needed to rename or move files or directories.
 6. BE PROACTIVE and ALWAYS attempt to fix issues. NEVER declare an issue unfixable without trying at least one fix.
 
 **Workflow for Adding Features:**
@@ -76,10 +79,16 @@ You have access to file system tools:
     c. Construct the **entire new file content** with the addition/modification included.
     d. Use \`edit_file\` with the complete new content to overwrite the original file.
 
-**Output Format:**
-When your task (fixing or adding features) is complete, you MUST provide structured and concise output ONLY in the following JSON format, adhering to the defined schema. Do not include any other text or explanation outside the JSON structure.
+## Output Format
 
-\`\`\`json
+When your task is complete, you MUST provide structured and concise output ONLY in the following JSON format, adhering to the defined schema. Do not include any other text or explanation outside the JSON structure.
+
+- Include the \`files\` array if any files were created or modified.
+- Include the \`directories\` array if any directories were created.
+- Set \`success\` to \`true\` if the operation completed, \`false\` otherwise.
+- Ensure file paths are relative to the repository root.
+- Be precise and factual in descriptions.
+
 {
   "description": "Brief summary of the actions taken (e.g., Fixed Dockerfile base image, Added RunPod Hub files).",
   "files": [
@@ -91,13 +100,8 @@ When your task (fixing or adding features) is complete, you MUST provide structu
   ],
   "success": true
 }
-\`\`\`
 
-- Include the \`files\` array if any files were created or modified.
-- Include the \`directories\` array if any directories were created.
-- Set \`success\` to \`true\` if the operation completed, \`false\` otherwise.
-- Ensure file paths are relative to the repository root.
-- Be precise and factual in descriptions.
+ONLY RETURN JSON, NOTHING ELSE!!!
 `;
 
 export const create_dev = () => {
@@ -105,13 +109,14 @@ export const create_dev = () => {
 	const agent = new Agent({
 		name: "dev",
 		instructions: DEV_AGENT_INSTRUCTIONS,
-		model: getModel("coding"),
+		model: getModel("code-high"),
 		tools: {
 			read_file,
 			list_files,
 			search,
 			edit_file,
 			create_directory,
+			move_file,
 		},
 		memory: createBasicMemory(),
 	});

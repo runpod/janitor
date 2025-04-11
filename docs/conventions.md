@@ -194,7 +194,7 @@ Example of the correct agent-as-tool pattern:
 import { createTool } from "@mastra/core/tools";
 import { createRepositoryRepairAgent } from "../agents/repository-repair-agent.js";
 
-import { getMastraInstance } from "../utils/mastra-singleton";
+import { getMastraInstance } from "../utils/mastra";
 
 export const repositoryRepairTool = createTool({
     id: "Repository Repair",
@@ -352,7 +352,7 @@ When connecting workflows with agents:
 Example of a tool that executes a workflow:
 
 ```typescript
-import { getMastraInstance } from "utils/mastra-singleton";
+import { getMastraInstance } from "utils/mastra";
 
 export const dockerValidationTool = createTool({
   id: "Docker Repository Validator",

@@ -88,7 +88,7 @@ export const create_prCreator = async () => {
 	return new Agent({
 		name: "pr creator",
 		instructions: PR_AGENT_INSTRUCTIONS,
-		model: getModel("coding"),
+		model: getModel("code-medium"),
 		tools: { ...githubTools, read_file },
 	});
 };

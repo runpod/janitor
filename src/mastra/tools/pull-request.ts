@@ -44,7 +44,9 @@ export const pull_request = createTool({
   ${context.fixes.map(fix => `- ${fix.file}: ${fix.description}`).join("\n")}
 `;
 
-			const result = await agent.generate(prompt);
+			const result = await agent.generate(prompt, {
+				maxSteps: 20,
+			});
 
 			console.log("\n----------------------------------------------------------------");
 			console.log("----------------------------------------------------------------");

@@ -7,14 +7,14 @@
 Janitor uses a multi-agent architecture (based on [mastra](https://mastra.ai)) to validate and
 repair Docker repositories:
 
-1. **Janitor** (agent) - Coordinates the whole process
-2. **Dev** (agent) - Diagnoses and repairs issues in Docker repositories
-3. **PR Creator** (agent) - Creates pull requests with fixes on GitHub
+1. **Janitor** (agent) - Coordinates the whole process (validation, repair, feature addition)
+2. **Dev** (agent) - Diagnoses and repairs issues, implements new features
+3. **PR Creator** (agent) - Creates pull requests with fixes or new features on GitHub
 
 ## Getting Started
 
-This guide will help you set up and run Janitor locally for maintaining and validating Docker
-repositories.
+This guide will help you set up and run Janitor locally for maintaining, enhancing, and validating
+Docker repositories.
 
 ### Prerequisites
 
@@ -54,16 +54,7 @@ repositories.
     cp .env.example .env
     ```
 
-4. Edit the `.env` file and add your API keys:
-
-    ```
-    ANTHROPIC_API_KEY=sk-***************************
-    GITHUB_PERSONAL_ACCESS_TOKEN=ghp_***************************
-    RUNPOD_API_KEY=rpa_***************************
-
-    RUNPOD_ENDPOINT_ID=***************************
-    RUNPOD_MODEL_NAME=Team-ACE/ToolACE-2-Llama-3.1-8B
-    ```
+4. Edit the `.env` file and add your API keys + RunPod endpoint configuration
 
 ### Development
 
@@ -78,7 +69,7 @@ web interface.
 
 ### Testing Janitor
 
-To validate a Docker repository:
+**To validate a Docker repository:**
 
 ```bash
 npm run test:janitor
@@ -91,3 +82,15 @@ This will:
 2. Validate the Dockerfile
 3. Attempt repairs if needed
 4. Create a PR with fixes (if GitHub token is configured)
+
+**To test adding a feature**
+
+```bash
+npm run test:janitor:add-feature
+```
+
+This will:
+
+1. Clone the example repository
+2. Add the specified feature (e.g., `.runpod` folder, `hub.json`, `tests.json`, README badge)
+3. Create a PR with the new feature (if GitHub token is configured)
