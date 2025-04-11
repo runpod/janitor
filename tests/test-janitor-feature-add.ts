@@ -47,6 +47,7 @@ async function main() {
 - tests.json (check "test_input.json" of the repo to see how an example request looks like, get the "input" and replace "tests.input" with that, you can leave "name" and "timeout" as it is and make sure to only include the "config.env" section if there are env variables required by the repo)
 - if there is no LICENSE file, please add an MIT license with "Copyright (c) 2025 RunPod"
 - don't remove anything from the "hub.json" / "tests.json" example content below, as the "dev" agent needs to have this as a reference
+- update the "runpod" package in the "requirements.txt" file to "1.7.9"
 
 ALWAYS set the "pull request title" to "feat: preparing worker for the hub"
 ALWAYS generate the "iconUrl" for "hub.json" based on "https://dummyimage.com/100x100/007bff/fff&text=text" with a random color
