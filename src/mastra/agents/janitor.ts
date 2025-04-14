@@ -1,8 +1,8 @@
 // Import from the specific path as recommended
 import { Agent } from "@mastra/core/agent";
 
+import { add_feature } from "../tools/add-feature.js";
 import { docker_validation } from "../tools/docker-validation-tool";
-import { add_feature } from "../tools/feature-addition-tool.js"; // Import the new tool
 import { git_checkout } from "../tools/git-tools";
 import { pull_request } from "../tools/pull-request.js";
 import { repair } from "../tools/repair";

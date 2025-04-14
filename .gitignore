@@ -43,4 +43,4 @@ dist
 repos/*
 !repos/repositories.json
 .env.development
-memory.db
+memory.db*

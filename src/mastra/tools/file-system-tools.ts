@@ -388,7 +388,6 @@ export const createDirectory = async (
 
 		// Create the directory recursively
 		await fs.mkdir(resolvedPath, { recursive: true });
-		console.log(`Directory created successfully: ${resolvedPath}`);
 
 		return {
 			success: true,
@@ -530,8 +529,6 @@ export const moveFileOrDirectory = async (
 
 		// Perform the move/rename operation
 		await fs.rename(resolvedSource, resolvedDestination);
-
-		console.log(`Successfully moved/renamed ${resolvedSource} to ${resolvedDestination}`);
 		return { success: true };
 	} catch (error: any) {
 		console.error(`Error moving/renaming file/directory: ${error.message}`);

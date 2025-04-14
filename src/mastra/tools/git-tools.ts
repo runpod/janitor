@@ -5,6 +5,17 @@ import path from "path";
 import { z } from "zod";
 
 /**
+ * Generates the local path for a given repository name.
+ * @param repoName The full repository name (e.g., 'organization/repo-name').
+ * @returns The local path where the repository should be cloned.
+ */
+export function getRepoPath(repoName: string): string {
+	const localRepoName = repoName.replace("/", "-");
+	const reposDir = path.join(process.cwd(), "repos");
+	return path.join(reposDir, localRepoName);
+}
+
+/**
  * Execute a shell command with proper error handling
  */
 function safeExecSync(command: string, cwd?: string) {
@@ -69,14 +80,12 @@ export const checkoutGitRepository = async (
 
 		// Set up repository details
 		const repoUrl = `https://github.com/${fullRepoName}.git`;
-		const localRepoName = fullRepoName.replace("/", "-");
-		const reposDir = path.join(process.cwd(), "repos");
-		const targetPath = path.join(reposDir, localRepoName);
+		const targetPath = getRepoPath(fullRepoName);
 
 		// Create repos directory if it doesn't exist
-		if (!fs.existsSync(reposDir)) {
-			fs.mkdirSync(reposDir, { recursive: true });
-			console.log(`Created repos directory at ${reposDir}`);
+		if (!fs.existsSync(path.dirname(targetPath))) {
+			fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+			console.log(`Created repos directory at ${path.dirname(targetPath)}`);
 		}
 
 		// Check if repository directory exists
@@ -190,9 +199,7 @@ export const git_checkout = createTool({
 		console.log("----------------------------------------------------------------");
 		console.log("🛠️  GIT CHECKOUT TOOL");
 		console.log(`repository: ${fullRepoName}`);
-		console.log(
-			`target path ${path.join(process.cwd(), "repos", fullRepoName.replace("/", "-"))}`
-		);
+		console.log(`target path ${getRepoPath(fullRepoName)}`);
 		console.log("----------------------------------------------------------------\n");
 
 		const result = await checkoutGitRepository(fullRepoName, undefined);

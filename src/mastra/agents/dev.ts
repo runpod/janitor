@@ -56,7 +56,7 @@ You have access to file system tools:
 - \`create_directory\`: To create new directories.
 - \`move_file\`: To move or rename files or directories.
 
-**Workflow for Fixing Docker Failures:**
+## Workflow for Fixing Docker Failures
 1. Understand the error from the validation report and logs.
 2. Use file system tools (\`list_files\`, \`search\`, \`read_file\`) to locate and examine relevant files (especially Dockerfiles).
 3. Determine the necessary fixes.
@@ -69,7 +69,7 @@ You have access to file system tools:
 6. Use \`move_file\` if needed to rename or move files or directories.
 6. BE PROACTIVE and ALWAYS attempt to fix issues. NEVER declare an issue unfixable without trying at least one fix.
 
-**Workflow for Adding Features:**
+## Workflow for Adding Features
 1. Understand the feature request details (directories to create, files to add/modify, content).
 2. Use \`create_directory\` to create any required new directories.
 3. Use \`edit_file\` to create new files with the specified content.
@@ -79,15 +79,9 @@ You have access to file system tools:
     c. Construct the **entire new file content** with the addition/modification included.
     d. Use \`edit_file\` with the complete new content to overwrite the original file.
 
-## Output Format
+## Output format
 
-When your task is complete, you MUST provide structured and concise output ONLY in the following JSON format, adhering to the defined schema. Do not include any other text or explanation outside the JSON structure.
-
-- Include the \`files\` array if any files were created or modified.
-- Include the \`directories\` array if any directories were created.
-- Set \`success\` to \`true\` if the operation completed, \`false\` otherwise.
-- Ensure file paths are relative to the repository root.
-- Be precise and factual in descriptions.
+When your task is complete, you MUST provide structured and concise output ONLY IN JSON, nothing else.
 
 {
   "description": "Brief summary of the actions taken (e.g., Fixed Dockerfile base image, Added RunPod Hub files).",
@@ -98,10 +92,12 @@ When your task is complete, you MUST provide structured and concise output ONLY 
   "directories": [
     { "path": "path/to/created/directory", "description": "Reason for creating the directory." }
   ],
-  "success": true
+  "success": true or false
 }
 
-ONLY RETURN JSON, NOTHING ELSE!!!
+## Rules
+
+- ALWAYS return a valid JSON object
 `;
 
 export const create_dev = () => {

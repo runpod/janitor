@@ -5,5 +5,9 @@ import { Memory } from "@mastra/memory";
  * Relies entirely on Mastra's default memory settings
  */
 export function createBasicMemory() {
-	return new Memory();
+	return new Memory({
+		options: {
+			lastMessages: 5,
+		},
+	});
 }

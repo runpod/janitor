@@ -1,9 +1,13 @@
 import fs from "fs/promises";
-import path from "path";
 
 import { mastra } from "../src/mastra/index.js";
+import { getRepoPath } from "../src/mastra/tools/git-tools.js";
+import { getCliArg } from "../src/utils/cli-utils.js";
 
 async function main() {
+	// Get repository name from CLI arguments or use default
+	const repoName = getCliArg("--repo", "TimPietrusky/worker-basic");
+
 	try {
 		console.log("\n----------------------------------------------------------------");
 		console.log("----------------------------------------------------------------");
@@ -11,8 +15,8 @@ async function main() {
 		console.log("----------------------------------------------------------------");
 		console.log("----------------------------------------------------------------\n");
 
-		// Define the repository path
-		const repoPath = path.join(process.cwd(), "repos", "TimPietrusky-worker-basic");
+		// Define the repository path using the helper function
+		const repoPath = getRepoPath(repoName);
 
 		// Delete the repo directory if it exists to ensure a clean start
 		console.log(`Checking if repo directory exists: ${repoPath}`);
@@ -31,7 +35,7 @@ async function main() {
 		// Get the repo validator agent
 		const agent = mastra.getAgent("janitor");
 
-		const prompt = "Please validate the repository TimPietrusky/worker-basic";
+		const prompt = `Please validate the repository ${repoName}`;
 
 		console.log("\n----------------------------------------------------------------");
 		console.log("----------------------------------------------------------------");
@@ -48,7 +52,7 @@ async function main() {
 		console.log("🤖  janitor");
 		console.log(response.text);
 		console.log("----------------------------------------------------------------");
-		console.log(JSON.stringify(response.response.messages, null, 2));
+		// console.log(JSON.stringify(response.response.messages, null, 2));
 		console.log("----------------------------------------------------------------\n");
 	} catch (error) {
 		console.error("Error running E2E test:", error);
