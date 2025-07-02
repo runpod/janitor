@@ -1,5 +1,6 @@
 // Centralized AI model providers for the application
 import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import dotenv from "dotenv";
@@ -11,6 +12,7 @@ const requiredEnvVars = [
 	"OPENAI_API_KEY",
 	"RUNPOD_GENERAL_ENDPOINT_ID",
 	"RUNPOD_GENERAL_MODEL",
+	"GOOGLE_GENERATIVE_AI_API_KEY",
 	// "RUNPOD_CODING_ENDPOINT_ID",
 	// "RUNPOD_CODING_MODEL",
 ];
@@ -23,6 +25,8 @@ if (missingEnvVars.length > 0) {
 
 export const sonnetCodeHigh = anthropic("claude-3-7-sonnet-latest");
 export const sonnetCodeMedium = anthropic("claude-3-5-sonnet-latest");
+
+export const geminiPro = google("gemini-2.5-pro-preview-03-25");
 
 export const general = createOpenAI({
 	baseURL: `https://api.runpod.ai/v2/${process.env.RUNPOD_GENERAL_ENDPOINT_ID}/openai/v1`,

@@ -1,7 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { operationOutputSchema } from "../agents/dev"; // Import the output schema from Dev agent
 import { getMastraInstance } from "../utils/mastra";
 
 // Define the input schema for the feature addition tool
@@ -14,9 +13,6 @@ const featureAdditionInputSchema = z.object({
 		),
 });
 
-// Define the output schema for the feature addition tool (should match Dev agent's output)
-const featureAdditionOutputSchema = operationOutputSchema;
-
 /**
  * Tool to invoke the Dev agent for adding features to a repository.
  */
@@ -25,7 +21,6 @@ export const add_feature = createTool({
 	description:
 		"Invokes the Dev agent to add a specified feature (create directories/files, modify files) to the repository.",
 	inputSchema: featureAdditionInputSchema,
-	outputSchema: featureAdditionOutputSchema,
 	execute: async ({ context }) => {
 		try {
 			console.log("\n----------------------------------------------------------------");
@@ -49,49 +44,17 @@ export const add_feature = createTool({
 
 			console.log("Dev Agent Raw Response Text:", response.text);
 
-			// Attempt to parse the structured JSON output from the Dev agent's response text
-			let structuredOutput;
-			try {
-				// Directly parse the entire response text as JSON
-				structuredOutput = JSON.parse(response.text);
-				console.log("Parsed structured output from Dev Agent:", structuredOutput);
-
-				// Validate against the schema
-				const validationResult = featureAdditionOutputSchema.safeParse(structuredOutput);
-
-				if (!validationResult.success) {
-					// Log validation error and return failure state
-					console.error("Dev agent output validation failed:", validationResult.error);
-					return {
-						description:
-							"Dev agent returned output that failed schema validation: " +
-							validationResult.error.message,
-						success: false,
-						files: [],
-						directories: [],
-					};
-				}
-
-				// Return the validated, structured output directly
-				return validationResult.data;
-			} catch (parseError: any) {
-				// Log parsing error and return failure state
-				console.error("Failed to parse JSON output from Dev agent:", parseError);
-				return {
-					description:
-						"Failed to parse the Dev agent's response. Raw response: " + response.text,
-					success: false,
-					files: [],
-					directories: [],
-				};
-			}
+			return {
+				success: true,
+				responseText: response.text,
+				description: "Dev agent executed. See responseText for details.",
+			};
 		} catch (error: any) {
 			console.error(`Error in feature addition tool: ${error.message}`);
 			return {
 				description: `Failed to execute feature addition: ${error.message}`,
 				success: false,
-				files: [],
-				directories: [],
+				responseText: null,
 			};
 		}
 	},

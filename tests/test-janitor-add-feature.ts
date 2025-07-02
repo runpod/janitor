@@ -36,9 +36,16 @@ async function main() {
 			throw new Error("Janitor agent not found. Ensure it's registered in mastra.");
 		}
 
+		const prompt3 = `Add a new feature to the repository ${repoFullName}: create a test_input.json that contains the content of .runpod/tests.json, but only the "input" section and make sure to add the file into the Dockerfile as well
+		`;
+
+		const prompt2 = `Add a new feature to the repository ${repoFullName}: use the requirements.txt to install "runpod" package in the Dockerfile and make sure to use a "~=" for the version and not "=="
+		`;
+
 		const prompt = `Add a new feature to the repository ${repoFullName}: prepare the repo for the "RunPod hub":
 - read the README.md to understand what the repo is about & select a "category" from "audio", "video", "image", "embedding", "language"
-- add a badge to the "README.md" after the headline in this format: [![RunPod](https://api.runpod.io/badge/${repoFullName})](https://www.runpod.io/console/hub/${repoFullName})
+- add a badge to the "README.md" after the headline in this format: "[![RunPod](https://api.runpod.io/badge/${repoFullName})](https://www.runpod.io/console/hub/${repoFullName})"
+- update the "README.md" with info about the worker and remove anything that doesn't belong to the worker
 - make sure that we have a "handler.py" file somewhere, sometimes this file is called "rp_handler.py", so please rename that
 - .runpod folder on the top level of the repository path
 - read the "test_input.json" and use that to update the "input" section of the "tests.json" file
@@ -66,6 +73,17 @@ ALWAYS include the TEMPLATES
   "config": {
     "runsOn": "GPU",
     "containerDiskInGb": 20,
+	"gpuIds": "ADA_24",
+	"gpuCount": 1,
+	"allowedCudaVersions": [
+		"12.7",
+		"12.6",
+		"12.5",
+		"12.4",
+		"12.3",
+		"12.2",
+		"12.1"
+	],
     "env": [
       {
         "key": "STATIC_VAR",

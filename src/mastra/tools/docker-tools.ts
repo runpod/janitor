@@ -297,7 +297,7 @@ export const buildDockerImage = async (
 			dockerfileDir,
 			1200000 // 20 minutes timeout
 		);
-		
+
 		if (!buildResult.success) {
 			console.error(`Docker build failed`);
 			return {
@@ -363,7 +363,7 @@ export const runDockerContainer = async (
 		console.log(`Using container name: ${finalContainerName}`);
 
 		// Construct the run command args
-		const runArgs = ["run", "-d", "--name", finalContainerName];
+		const runArgs = ["run", "-d", "--gpus", "all", "--name", finalContainerName];
 
 		// Add port mappings if provided
 		if (ports && ports.length > 0) {

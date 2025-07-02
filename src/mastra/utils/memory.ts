@@ -7,7 +7,7 @@ import { Memory } from "@mastra/memory";
 export function createBasicMemory() {
 	return new Memory({
 		options: {
-			lastMessages: 5,
+			lastMessages: 10,
 		},
 	});
 }
