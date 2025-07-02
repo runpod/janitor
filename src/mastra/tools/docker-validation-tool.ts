@@ -43,13 +43,13 @@ export const docker_validation = createTool({
 				};
 			}
 
-			// Create a run and execute the workflow
-			const { runId, start } = dockerValidationWorkflow.createRun();
+			// Create a run and execute the workflow using the new API
+			const run = await dockerValidationWorkflow.createRunAsync();
 
-			// Start the workflow with the parameters - using the updated schema property names
-			const result = await start({
-				triggerData: {
-					repositoryPath: repoPath, // This matches our updated workflow schema
+			// Start the workflow with the parameters - using the new input format
+			const result = await run.start({
+				inputData: {
+					repositoryPath: repoPath,
 					imageName: context.imageName,
 					platform: context.platform,
 					ports: context.ports,
@@ -58,13 +58,10 @@ export const docker_validation = createTool({
 				},
 			});
 
-			// Get the report directly from the 'report' step
-			const reportStepResult = result.results?.report;
-
-			if (reportStepResult?.status === "success" && reportStepResult.output?.report) {
-				// Extract success/failure status from the report
-				const report = reportStepResult.output.report;
-				const isSuccess = report.includes("**Overall Success**: ✅ Passed");
+			// Check if workflow was successful and has the expected result
+			if (result.status === "success" && result.result) {
+				const report = result.result.report;
+				const isSuccess = result.result.success;
 
 				console.log(report);
 
@@ -76,16 +73,36 @@ export const docker_validation = createTool({
 				};
 			}
 
-			// If we couldn't find the report step, log the full results for debugging
+			// Handle workflow failure
+			if (result.status === "failed") {
+				console.error("Workflow failed:", result.error);
+				return {
+					success: false,
+					repoPath: context.repoPath,
+					error: `Workflow failed: ${result.error}`,
+				};
+			}
+
+			// Handle suspended workflow
+			if (result.status === "suspended") {
+				console.error("Workflow was suspended unexpectedly");
+				return {
+					success: false,
+					repoPath: context.repoPath,
+					error: "Workflow was suspended and requires manual intervention",
+				};
+			}
+
+			// Fallback for unexpected states
 			console.error(
-				"Couldn't find report step result. Full workflow result:",
+				"Workflow completed with unexpected result:",
 				JSON.stringify(result, null, 2)
 			);
 
 			return {
 				success: false,
 				repoPath: context.repoPath,
-				error: "Workflow completed but no report was generated",
+				error: "Workflow completed but returned unexpected result format",
 			};
 		} catch (error) {
 			console.error(`Error running Docker validation workflow: ${error}`);

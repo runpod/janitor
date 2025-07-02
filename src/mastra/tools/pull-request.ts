@@ -2,6 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
 import { getMastraInstance } from "../utils/mastra";
+import { checkGitStatus } from "./git-tools";
 
 /**
  * PR Creator - Creates a pull request for a fixed repository
@@ -21,9 +22,19 @@ export const pull_request = createTool({
 					description: z.string().describe("Description of the fix"),
 				})
 			)
-			.describe("List of fixes that were applied"),
+			.optional()
+			.describe(
+				"Optional list of fixes that were applied - if not provided, will use git status to detect changes"
+			),
+		context: z
+			.string()
+			.optional()
+			.describe(
+				"Optional additional context about what was done (e.g., 'Added new feature', 'Fixed validation errors')"
+			),
 	}),
-	description: "Creates or updates a Pull Request for a repository that has been fixed",
+	description:
+		"Creates or updates a Pull Request for a repository that has been fixed. Automatically detects changed files using git status.",
 	execute: async ({ context }): Promise<any> => {
 		try {
 			console.log("\n----------------------------------------------------------------");
@@ -32,17 +43,52 @@ export const pull_request = createTool({
 			console.log("using the 'pr creator' agent");
 			console.log("----------------------------------------------------------------\n");
 
+			// First, check if there are any changes in the repository
+			console.log("📊 Checking for changes in the repository...");
+			const statusCheck = await checkGitStatus(context.repositoryPath);
+
+			if (!statusCheck.success) {
+				console.error(`❌ Failed to check git status: ${statusCheck.error}`);
+				return `Failed to check repository status: ${statusCheck.error}`;
+			}
+
+			if (!statusCheck.hasChanges) {
+				console.log("ℹ️  No changes detected in repository - skipping PR creation");
+				return `No changes detected in repository at ${context.repositoryPath}. No PR needed.`;
+			}
+
+			console.log(
+				`✅ Changes detected! Found ${statusCheck.changedFiles.length} changed files:`
+			);
+			statusCheck.changedFiles.forEach(file => console.log(`   - ${file}`));
+
 			// Get the mastra instance from our singleton
 			const mastra = getMastraInstance();
 			const agent = mastra.getAgent("prCreator");
 
-			const prompt = `please create the pull request for:
+			// Build the prompt - use git status as primary source, fixes as optional context
+			let prompt = `please create the pull request for:
 
 - repository: ${context.repository}
 - repository path: ${context.repositoryPath}
-- fixes: 
-  ${context.fixes.map(fix => `- ${fix.file}: ${fix.description}`).join("\n")}
-`;
+
+Changed files detected by git status:
+${statusCheck.changedFiles.map(file => `- ${file}`).join("\n")}`;
+
+			// Add manual fixes context if provided
+			if (context.fixes && context.fixes.length > 0) {
+				prompt += `
+
+Additional context about the changes:
+${context.fixes.map(fix => `- ${fix.file}: ${fix.description}`).join("\n")}`;
+			}
+
+			// Add general context if provided
+			if (context.context) {
+				prompt += `
+
+Context: ${context.context}`;
+			}
 
 			const result = await agent.generate(prompt, {
 				maxSteps: 20,

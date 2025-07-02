@@ -1,4 +1,4 @@
-import { Step, Workflow } from "@mastra/core/workflows";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 import path from "path";
 import { z } from "zod";
 
@@ -15,27 +15,40 @@ const retryConfig = {
 };
 
 // Step 1: Find Dockerfile and build Docker image
-const dockerBuildStep = new Step({
+const dockerBuildStep = createStep({
 	id: "build",
 	description: "Finds Dockerfile and builds Docker image",
+	inputSchema: z.object({
+		repositoryPath: z.string(),
+		imageName: z.string().optional(),
+		platform: z.string().optional(),
+		ports: z.array(z.string()).optional(),
+		envVars: z.record(z.string()).optional(),
+		command: z.string().optional(),
+	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		imageName: z.string().optional(),
 		dockerfilePath: z.string().optional(),
 		error: z.string().optional(),
+		ports: z.array(z.string()).optional(),
+		envVars: z.record(z.string()).optional(),
+		command: z.string().optional(),
 	}),
-	retryConfig,
-	execute: async ({ context }) => {
+	execute: async ({ inputData }) => {
 		console.log("\n----------------------------------------------------------------");
 		console.log("📊  DOCKER VALIDATION: Step 1: find Dockerfile & build image");
 		console.log("----------------------------------------------------------------\n");
 
-		// Get the repository path from the trigger data
-		const repoPath = context.triggerData.repositoryPath;
+		// Get the repository path from the input data
+		const repoPath = inputData.repositoryPath;
 		if (!repoPath) {
 			return {
 				success: false,
 				error: "Repository path not provided",
+				ports: inputData.ports,
+				envVars: inputData.envVars,
+				command: inputData.command,
 			};
 		}
 
@@ -51,6 +64,9 @@ const dockerBuildStep = new Step({
 				return {
 					success: false,
 					error: findResult.error || "No Dockerfiles found in the repository",
+					ports: inputData.ports,
+					envVars: inputData.envVars,
+					command: inputData.command,
 				};
 			}
 
@@ -61,10 +77,10 @@ const dockerBuildStep = new Step({
 			// Generate image name based on repo name if not provided
 			const repoName = path.basename(repoPath);
 			const defaultImageName = `${repoName.toLowerCase()}-${Date.now()}`;
-			const imageName = context.triggerData.imageName || defaultImageName;
+			const imageName = inputData.imageName || defaultImageName;
 
 			// Use default platform if not provided
-			const platform = context.triggerData.platform || "linux/amd64";
+			const platform = inputData.platform || "linux/amd64";
 
 			// Build the Docker image
 			const buildResult = await buildDockerImage(dockerfilePath, imageName, platform);
@@ -73,6 +89,9 @@ const dockerBuildStep = new Step({
 				return {
 					success: false,
 					error: buildResult.error || "Failed to build Docker image",
+					ports: inputData.ports,
+					envVars: inputData.envVars,
+					command: inputData.command,
 				};
 			}
 
@@ -80,6 +99,9 @@ const dockerBuildStep = new Step({
 				success: true,
 				imageName: buildResult.imageName,
 				dockerfilePath,
+				ports: inputData.ports,
+				envVars: inputData.envVars,
+				command: inputData.command,
 			};
 		} catch (error) {
 			console.error(
@@ -88,25 +110,35 @@ const dockerBuildStep = new Step({
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : String(error),
+				ports: inputData.ports,
+				envVars: inputData.envVars,
+				command: inputData.command,
 			};
 		}
 	},
 });
 
 // Step 2: Run Docker container
-const dockerRunStep = new Step({
+const dockerRunStep = createStep({
 	id: "run",
 	description: "Runs a Docker container from the built image",
+	inputSchema: z.object({
+		success: z.boolean(),
+		imageName: z.string().optional(),
+		dockerfilePath: z.string().optional(),
+		error: z.string().optional(),
+		ports: z.array(z.string()).optional(),
+		envVars: z.record(z.string()).optional(),
+		command: z.string().optional(),
+	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		containerId: z.string().optional(),
 		error: z.string().optional(),
 	}),
-	retryConfig,
-	execute: async ({ context }) => {
-		// Get the image name from the previous step
-		const buildStepResult = context.getStepResult(dockerBuildStep);
-		if (!buildStepResult?.success || !buildStepResult?.imageName) {
+	execute: async ({ inputData }) => {
+		// Check if the previous step was successful
+		if (!inputData.success || !inputData.imageName) {
 			return {
 				success: false,
 				error: "Docker build failed or image name not available",
@@ -117,7 +149,7 @@ const dockerRunStep = new Step({
 		console.log("📊  DOCKER VALIDATION: Step 2: run container");
 		console.log("----------------------------------------------------------------\n");
 
-		const imageName = buildStepResult.imageName;
+		const imageName = inputData.imageName;
 		console.log(`Running container from image: ${imageName}`);
 
 		try {
@@ -128,9 +160,9 @@ const dockerRunStep = new Step({
 			const runResult = await runDockerContainer(
 				imageName,
 				containerName,
-				context.triggerData.ports,
-				context.triggerData.envVars,
-				context.triggerData.command
+				inputData.ports,
+				inputData.envVars,
+				inputData.command
 			);
 
 			if (!runResult.success || !runResult.containerId) {
@@ -157,20 +189,23 @@ const dockerRunStep = new Step({
 });
 
 // Step 3: Check Docker container logs
-const dockerLogsStep = new Step({
+const dockerLogsStep = createStep({
 	id: "logs",
 	description: "Checks logs from the Docker container",
+	inputSchema: z.object({
+		success: z.boolean(),
+		containerId: z.string().optional(),
+		error: z.string().optional(),
+	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		logs: z.string().optional(),
 		lineCount: z.number().optional(),
 		error: z.string().optional(),
 	}),
-	retryConfig,
-	execute: async ({ context }) => {
-		// Get the container ID from the previous step
-		const runStepResult = context.getStepResult(dockerRunStep);
-		if (!runStepResult?.success || !runStepResult?.containerId) {
+	execute: async ({ inputData }) => {
+		// Check if the previous step was successful
+		if (!inputData.success || !inputData.containerId) {
 			return {
 				success: false,
 				error: "Docker run failed or container ID not available",
@@ -181,7 +216,7 @@ const dockerLogsStep = new Step({
 		console.log("📊  DOCKER VALIDATION: Step 3: check container logs");
 		console.log("----------------------------------------------------------------\n");
 
-		const containerId = runStepResult.containerId;
+		const containerId = inputData.containerId;
 		const waitTime = 1000; // Shorter wait time for testing
 		const tail = 100;
 
@@ -223,26 +258,35 @@ const dockerLogsStep = new Step({
 });
 
 // Step 4: Generate a report of the validation results
-const generateReportStep = new Step({
+const generateReportStep = createStep({
 	id: "report",
 	description: "Generates a report of the Docker validation results",
+	inputSchema: z.object({
+		success: z.boolean(),
+		logs: z.string().optional(),
+		lineCount: z.number().optional(),
+		error: z.string().optional(),
+	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		report: z.string(),
 	}),
-	retryConfig,
-	execute: async ({ context }) => {
+	execute: async ({ inputData, getStepResult, getInitData }) => {
 		console.log("\n----------------------------------------------------------------");
 		console.log(
 			"📊  DOCKER VALIDATION: Step 4: generate report to determine validation success"
 		);
 		console.log("----------------------------------------------------------------\n");
 
-		const repoPath = context.triggerData.repositoryPath;
+		// Get initial workflow data
+		const initData = getInitData();
+		const repoPath = initData.repositoryPath;
 		const repoName = path.basename(repoPath);
-		const buildResult = context.getStepResult(dockerBuildStep);
-		const runResult = context.getStepResult(dockerRunStep);
-		const logsResult = context.getStepResult(dockerLogsStep);
+
+		// Get results from previous steps
+		const buildResult = getStepResult(dockerBuildStep);
+		const runResult = getStepResult(dockerRunStep);
+		const logsResult = inputData;
 
 		const dockerfilePath = buildResult?.dockerfilePath;
 		const imageName = buildResult?.imageName;
@@ -292,9 +336,10 @@ ${
 });
 
 // Create the workflow
-export const dockerValidationWorkflow = new Workflow({
-	name: "docker-validation",
-	triggerSchema: z.object({
+export const dockerValidationWorkflow = createWorkflow({
+	id: "docker-validation",
+	description: "Validates Docker repositories by building and running containers",
+	inputSchema: z.object({
 		repositoryPath: z.string().describe("Path to the repository on disk (already checked out)"),
 		imageName: z.string().optional().describe("Optional custom name for Docker image"),
 		platform: z.string().optional().describe("Optional target platform (e.g., 'linux/amd64')"),
@@ -302,12 +347,13 @@ export const dockerValidationWorkflow = new Workflow({
 		envVars: z.record(z.string()).optional().describe("Optional environment variables"),
 		command: z.string().optional().describe("Optional command to run in container"),
 	}),
-	retryConfig,
-});
-
-// Build workflow with sequential steps
-dockerValidationWorkflow
-	.step(dockerBuildStep)
+	outputSchema: z.object({
+		success: z.boolean(),
+		report: z.string(),
+	}),
+	steps: [dockerBuildStep, dockerRunStep, dockerLogsStep, generateReportStep],
+})
+	.then(dockerBuildStep)
 	.then(dockerRunStep)
 	.then(dockerLogsStep)
 	.then(generateReportStep)

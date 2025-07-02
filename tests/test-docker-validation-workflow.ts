@@ -13,13 +13,13 @@ async function testDockerValidationWorkflow() {
 
 		console.log("Workflow found, executing...");
 
-		// Create a run instance with createRun() and use start() method
-		const { runId, start } = workflow.createRun();
-		console.log(`Created workflow run with ID: ${runId}`);
+		// Create a run instance with createRunAsync() and use start() method
+		const run = await workflow.createRunAsync();
+		console.log(`Created workflow run with ID: ${run.runId}`);
 
 		// Execute the workflow with our test parameters
-		const result = await start({
-			triggerData: {
+		const result = await run.start({
+			inputData: {
 				repositoryPath: "repos/TimPietrusky-worker-basic",
 				imageName: "timpietrusky-basic-test",
 				platform: "linux/amd64",
@@ -31,20 +31,30 @@ async function testDockerValidationWorkflow() {
 
 		console.log("\n--- WORKFLOW EXECUTION RESULTS ---");
 
-		// The result object contains step results
-		if (result) {
+		// Handle different workflow statuses
+		if (result.status === "success") {
+			console.log("✅ Workflow completed successfully!");
+			console.log("Final result:", result.result);
+
+			if (result.result?.report) {
+				console.log("\n--- FINAL REPORT ---");
+				console.log(result.result.report);
+			}
+		} else if (result.status === "failed") {
+			console.error("❌ Workflow failed!");
+			console.error("Error:", result.error);
+		} else if (result.status === "suspended") {
+			console.log("⏸️ Workflow was suspended");
+			console.log("Suspended steps:", result.suspended);
+		}
+
+		// Log step details for debugging
+		if (result.steps) {
 			console.log("\nStep Results:");
-			Object.entries(result).forEach(([stepId, stepResult]) => {
+			Object.entries(result.steps).forEach(([stepId, stepResult]) => {
 				console.log(`\n[${stepId}]:`);
 				console.log(JSON.stringify(stepResult, null, 2));
 			});
-		}
-
-		// Check if the report step succeeded
-		const reportStep = (result as any)?.report;
-		if (reportStep?.status === "success" && reportStep.output?.report) {
-			console.log("\n--- FINAL REPORT ---");
-			console.log(reportStep.output.report);
 		}
 
 		console.log("\n--- END WORKFLOW RESULTS ---");

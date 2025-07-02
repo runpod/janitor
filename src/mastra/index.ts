@@ -1,5 +1,6 @@
 import { Mastra } from "@mastra/core";
-import { createLogger } from "@mastra/core/logger";
+import { ConsoleLogger } from "@mastra/core/logger";
+import { LibSQLStore } from "@mastra/libsql";
 
 import { dev } from "./agents/dev";
 import { janitor } from "./agents/janitor";
@@ -16,7 +17,10 @@ export const mastra = new Mastra({
 		dev,
 		prCreator,
 	},
-	logger: createLogger({
+	storage: new LibSQLStore({
+		url: "file:./mastra.db",
+	}),
+	logger: new ConsoleLogger({
 		name: "Mastra",
 		level: "info",
 	}),

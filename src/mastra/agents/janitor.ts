@@ -3,7 +3,7 @@ import { Agent } from "@mastra/core/agent";
 
 import { add_feature } from "../tools/add-feature.js";
 import { docker_validation } from "../tools/docker-validation-tool";
-import { git_checkout } from "../tools/git-tools";
+import { git_checkout, git_status } from "../tools/git-tools";
 import { pull_request } from "../tools/pull-request.js";
 import { repair } from "../tools/repair";
 import { createBasicMemory } from "../utils/memory.js";
@@ -40,7 +40,11 @@ export const janitor = new Agent({
 
   **Pull Request Creation:**
   - After successful validation (either initial or after repair) OR after successfully adding a feature, use the "pull_request" tool.
-  - Include all relevant details from the validation, repair, or feature addition steps in the PR description.
+  - The "pull_request" tool will automatically detect changed files using git status.
+  - You only need to provide: repositoryPath, repository, and optionally some context about what was done.
+  - No need to manually track which files were changed - git status handles this automatically.
+  - If no changes are detected, no PR will be created.
+  - You can also use "git_status" to manually check for changes if needed.
 
   **User Interaction:**
   - When given multiple repositories, process each one sequentially.
@@ -50,6 +54,7 @@ export const janitor = new Agent({
   **Important Notes:**
   - Be precise when passing context between tools (especially "repoPath").
   - When calling "repair", make sure to properly escape any double quotes in the error message passed.
+  - PRs will only be created if there are actual changes in the repository.
 
   # output format
 
@@ -58,11 +63,12 @@ export const janitor = new Agent({
   - **Action**: The primary action performed (Validate, Validate & Repair, Add Feature).
   - **Status**: Final status (✅ Passed / 🔧 Fixed / ✨ Feature Added / ❌ Failed / ⚠️ Unfixable).
   - **Details**: Brief description of failure, fixes applied, or features added.
-  - **PR Status**: Status of the pull request (📝 Created / 🔄 Updated / ❌ Failed / N/A).
+  - **PR Status**: Status of the pull request (📝 Created / 🔄 Updated / ❌ Failed / 🚫 No Changes / N/A).
   `,
 	model: getModel("code-high"),
 	tools: {
 		git_checkout,
+		git_status,
 		docker_validation,
 		repair,
 		add_feature,

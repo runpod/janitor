@@ -53,6 +53,79 @@ function safeExecSync(command: string, cwd?: string) {
 }
 
 /**
+ * Check git status to see if there are any changes in the repository
+ */
+export const checkGitStatus = async (
+	repositoryPath: string
+): Promise<{
+	success: boolean;
+	hasChanges: boolean;
+	changedFiles: string[];
+	error?: string;
+	statusOutput?: string;
+}> => {
+	try {
+		console.log(`Checking git status for repository at: ${repositoryPath}`);
+
+		// Check if it's a git repository
+		if (!fs.existsSync(path.join(repositoryPath, ".git"))) {
+			return {
+				success: false,
+				hasChanges: false,
+				changedFiles: [],
+				error: "Not a git repository",
+			};
+		}
+
+		// Get git status
+		const statusResult = safeExecSync("git status --porcelain", repositoryPath);
+
+		if (!statusResult.success) {
+			return {
+				success: false,
+				hasChanges: false,
+				changedFiles: [],
+				error: statusResult.errorMessage,
+			};
+		}
+
+		const statusOutput = (statusResult.output || "").trim();
+		const hasChanges = statusOutput.length > 0;
+
+		// Parse changed files from status output
+		const changedFiles = statusOutput
+			.split("\n")
+			.filter(line => line.trim().length > 0)
+			.map(line => {
+				// Git status --porcelain format: "XY filename"
+				// Where X is staged status, Y is unstaged status
+				return line.substring(3).trim(); // Remove status chars and trim
+			});
+
+		console.log(`Git status check: ${hasChanges ? "Changes detected" : "No changes"}`);
+		if (hasChanges) {
+			console.log(`Changed files (${changedFiles.length}):`);
+			changedFiles.forEach(file => console.log(`  - ${file}`));
+		}
+
+		return {
+			success: true,
+			hasChanges,
+			changedFiles,
+			statusOutput,
+		};
+	} catch (error: any) {
+		console.error(`Error checking git status: ${error.message}`);
+		return {
+			success: false,
+			hasChanges: false,
+			changedFiles: [],
+			error: error.message,
+		};
+	}
+};
+
+/**
  * Clones or updates a GitHub repository
  */
 export const checkoutGitRepository = async (
@@ -223,6 +296,37 @@ export const git_checkout = createTool({
 			}
 		} else {
 			console.log(`❌ Repository checkout failed: ${result.error}`);
+		}
+
+		return result;
+	},
+});
+
+// Export git status check as a tool
+export const git_status = createTool({
+	id: "git_status",
+	inputSchema: z.object({
+		repositoryPath: z.string().describe("Path to the local repository"),
+	}),
+	description: "Checks git status to see if there are any uncommitted changes in the repository",
+	execute: async ({ context }) => {
+		console.log("\n----------------------------------------------------------------");
+		console.log("🛠️  GIT STATUS TOOL");
+		console.log(`repository path: ${context.repositoryPath}`);
+		console.log("----------------------------------------------------------------\n");
+
+		const result = await checkGitStatus(context.repositoryPath);
+
+		if (result.success) {
+			if (result.hasChanges) {
+				console.log(`✅ Changes detected in repository`);
+				console.log(`📁 Changed files (${result.changedFiles.length}):`);
+				result.changedFiles.forEach(file => console.log(`   - ${file}`));
+			} else {
+				console.log(`ℹ️  No changes detected in repository`);
+			}
+		} else {
+			console.log(`❌ Git status check failed: ${result.error}`);
 		}
 
 		return result;

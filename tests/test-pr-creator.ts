@@ -1,72 +1,63 @@
-import { mastra } from "../mastra";
+import { mastra } from "../src/mastra/index.js";
 
-async function main() {
+async function testPRCreatorAgent() {
 	try {
+		console.log("=== Testing PR Creator Agent (New Simplified Workflow) ===");
+
 		// Create the repository PR agent directly
 		const agent = mastra.getAgent("prCreator");
 		if (!agent) {
-			console.error("Failed to create Repository PR Agent!");
+			console.error("Failed to get PR Creator Agent!");
 			return;
 		}
 
 		console.log("Running repository PR agent test...");
 
-		// Create a sample PR request with test data
 		const testRepository = "TimPietrusky/worker-basic";
 		const repositoryPath = "./repos/TimPietrusky-worker-basic";
 
-		// Sample fixes that would have been applied
-		const fixes = [
-			{
-				file: "Dockerfile",
-				description: "Fixed COPY command to use correct source file name",
-			},
-			{
-				file: "requirements.txt",
-				description: "Updated package versions to be compatible",
-			},
-		];
+		console.log("\n--- OLD WAY (Manual file tracking) ---");
+		console.log("❌ Required manually tracking files:");
+		console.log("   - Dockerfile: Fixed COPY command");
+		console.log("   - requirements.txt: Updated versions");
+		console.log("   - Risk of missing files or wrong descriptions");
 
-		// Prepare the message for the agent
+		console.log("\n--- NEW WAY (Automatic git status detection) ---");
+		console.log("✅ Just provide context, let git handle file detection!");
+
+		// NEW SIMPLE MESSAGE: No need to manually list files
 		const message = `
-I need you to create a Pull Request for a fixed repository with the following details:
+I need you to create a Pull Request for a repository that has been fixed:
 
 Repository: ${testRepository}
 Repository Path: ${repositoryPath}
-Number of fixes: ${fixes.length}
-
-Fixes applied:
-${fixes.map(fix => `- ${fix.file}: ${fix.description}`).join("\n")}
+Context: Fixed Docker validation errors and updated dependencies
 
 The repository has been successfully fixed and validation has passed.
-Please create a PR with these changes, following your standard process for branch creation, committing, and PR submission.
+Please create a PR with the changes found in the repository, following your standard process for branch creation, committing, and PR submission.
 
-This is a real PR request - please proceed with actually creating the branch, committing the changes, and submitting the PR.
-Return a structured output with the PR details after you've created it.
+Use your git tools to detect what files have changed and create the PR accordingly.
 `;
 
-		// Request the PR creation
-		const response = await agent.generate(message);
+		const response = await agent.generate(message, {
+			maxSteps: 15,
+		});
 
-		console.log(response.text);
+		console.log("Agent Response:", response.text);
 
-		// // With structured output, we get the object directly
-		// console.log("\nAgent Response (Structured Output):");
-		// console.log(JSON.stringify(response.object, null, 2));
-
-		// console.log("\nPR Creation Summary:");
-		// console.log(response.object.summary);
-
-		// if (response.object.success) {
-		// 	console.log(`\nSuccessfully created PR #${response.object.prNumber}`);
-		// 	console.log(`PR URL: ${response.object.prUrl}`);
-		// 	console.log(`Branch: ${response.object.branch}`);
-		// } else {
-		// 	console.log("\nFailed to create PR. See summary for details.");
-		// }
+		console.log("\n✅ Benefits of new approach:");
+		console.log("   - No manual file tracking required");
+		console.log("   - Automatic detection of all changed files");
+		console.log("   - No risk of missing files");
+		console.log("   - Simpler API for agents to use");
+		console.log("   - Optional detailed context if needed");
 	} catch (error) {
 		console.error("Error running PR agent test:", error);
 	}
+}
+
+async function main() {
+	await testPRCreatorAgent();
 }
 
 main().catch(console.error);
