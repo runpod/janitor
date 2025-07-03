@@ -1,0 +1,27 @@
+{
+    "LaunchTemplate": {
+        "LaunchTemplateId": "lt-07e8afaf830e05126",
+        "Version": "$Latest"
+    },
+    "MinCount": 1,
+    "MaxCount": 1,
+    "TagSpecifications": [
+        {
+            "ResourceType": "instance",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "janitor-dev-runner"
+                },
+                {
+                    "Key": "Project", 
+                    "Value": "janitor-dev"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "dev"
+                }
+            ]
+        }
+    ]
+}

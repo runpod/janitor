@@ -2,14 +2,13 @@ import { generateText, tool } from "ai";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import { runpodModel } from "../mastra/utils/models";
+import { runpodGeneral } from "../src/mastra/utils/models";
 
 dotenv.config({ path: ".env" });
 
-
 // Create the stream using the AI SDK
 const result = await generateText({
-	model: runpodModel,
+	model: runpodGeneral,
 	messages: [
 		{
 			role: "system",

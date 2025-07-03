@@ -1,8 +1,8 @@
 import fs from "fs/promises";
 
-import { mastra } from "../src/mastra/index.js";
-import { getRepoPath } from "../src/mastra/tools/git-tools.js";
-import { getCliArg } from "../src/utils/cli-utils.js";
+import { mastra } from "../src/mastra/index";
+import { getRepoPath } from "../src/mastra/tools/git-tools";
+import { getCliArg } from "../src/utils/cli-utils";
 
 async function main() {
 	// Get repository name from CLI arguments or use default

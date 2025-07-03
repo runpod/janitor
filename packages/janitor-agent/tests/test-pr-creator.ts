@@ -1,4 +1,4 @@
-import { mastra } from "../src/mastra/index.js";
+import { mastra } from "../src/mastra/index";
 
 async function testPRCreatorAgent() {
 	try {

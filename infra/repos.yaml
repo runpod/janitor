@@ -1,0 +1,26 @@
+# Repository list for Janitor cloud runner
+# This file specifies which repositories should be processed by the Janitor
+
+repositories:
+    # Example RunPod worker repositories
+    - name: "worker-basic"
+      url: "https://github.com/TimPietrusky/worker-basic"
+      description: "Basic RunPod worker template"
+      priority: "high"
+
+# Configuration settings
+config:
+    # Maximum number of repositories to process in parallel
+    max_parallel: 1
+
+    # Timeout for each repository processing (in minutes)
+    timeout_minutes: 30
+
+    # Whether to create pull requests for fixes
+    create_pull_requests: true
+
+    # S3 prefix for storing reports
+    report_prefix: "reports"
+
+    # Log level (debug, info, warn, error)
+    log_level: "info"

@@ -10,6 +10,6 @@
     "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["src/**/*", "tests"],
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist", ".mastra"]
 }

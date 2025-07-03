@@ -37,10 +37,46 @@ yarn-error.log*
 .vscode
 .env*.local
 
-
 .mastra
 dist
 repos/*
 !repos/repositories.json
 .env.development
 memory.db*
+
+# Packer plugins (but keep the directory)
+.packer.d/plugins/
+.packer.d/logs/
+
+# Keep the .packer.d directory itself with a .gitkeep file
+!.packer.d/.gitkeep
+
+# Environment files
+.env
+
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Terraform variable files
+*.tfvars.local
+
+# Log files
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
