@@ -1,4 +1,4 @@
 environment   = "dev"
-instance_type = "t3.micro"  # Start small for testing, upgrade to g5.xlarge for GPU workloads
-key_name      = null        # Set to your EC2 key pair name if you want SSH access
+instance_type = "t3.micro"
+key_name      = "janitor-key"  # SSH key for remote access
 aws_profile   = "runpod-janitor" 

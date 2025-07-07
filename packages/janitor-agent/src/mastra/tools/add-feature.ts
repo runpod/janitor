@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { getMastraInstance } from "../utils/mastra";
+import { getMastraInstance } from "../utils/mastra.js";
 
 // Define the input schema for the feature addition tool
 const featureAdditionInputSchema = z.object({

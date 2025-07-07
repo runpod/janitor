@@ -77,6 +77,16 @@ export const checkGitStatus = async (
 			};
 		}
 
+		// Add repository to Git's safe directory list to avoid "dubious ownership" errors
+		const safeConfigResult = safeExecSync(
+			`git config --global --add safe.directory ${repositoryPath}`
+		);
+		if (!safeConfigResult.success) {
+			console.warn(
+				`Warning: Failed to add ${repositoryPath} to safe directories: ${safeConfigResult.errorMessage}`
+			);
+		}
+
 		// Get git status
 		const statusResult = safeExecSync("git status --porcelain", repositoryPath);
 
@@ -165,6 +175,16 @@ export const checkoutGitRepository = async (
 		if (fs.existsSync(targetPath)) {
 			console.log(`Repository exists at ${targetPath}, pulling latest changes`);
 
+			// Add repository to Git's safe directory list to avoid "dubious ownership" errors
+			const safeConfigResult = safeExecSync(
+				`git config --global --add safe.directory ${targetPath}`
+			);
+			if (!safeConfigResult.success) {
+				console.warn(
+					`Warning: Failed to add ${targetPath} to safe directories: ${safeConfigResult.errorMessage}`
+				);
+			}
+
 			// Try to pull from default branch
 			const pullResult = safeExecSync(`git pull`, targetPath);
 
@@ -199,6 +219,16 @@ export const checkoutGitRepository = async (
 
 			if (cloneResult.success) {
 				console.log(`Successfully cloned repository`);
+
+				// Add newly cloned repository to Git's safe directory list
+				const safeConfigResult = safeExecSync(
+					`git config --global --add safe.directory ${targetPath}`
+				);
+				if (!safeConfigResult.success) {
+					console.warn(
+						`Warning: Failed to add ${targetPath} to safe directories: ${safeConfigResult.errorMessage}`
+					);
+				}
 
 				// List files to verify content
 				const lsResult = safeExecSync(`ls -la`, targetPath);

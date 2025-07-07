@@ -1,8 +1,8 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { getMastraInstance } from "../utils/mastra";
-import { checkGitStatus } from "./git-tools";
+import { getMastraInstance } from "../utils/mastra.js";
+import { checkGitStatus } from "./git-tools.js";
 
 /**
  * PR Creator - Creates a pull request for a fixed repository

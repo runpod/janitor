@@ -2,10 +2,10 @@
 import { Agent } from "@mastra/core/agent";
 
 import { add_feature } from "../tools/add-feature.js";
-import { docker_validation } from "../tools/docker-validation-tool";
-import { git_checkout, git_status } from "../tools/git-tools";
+import { docker_validation } from "../tools/docker-validation-tool.js";
+import { git_checkout, git_status } from "../tools/git-tools.js";
 import { pull_request } from "../tools/pull-request.js";
-import { repair } from "../tools/repair";
+import { repair } from "../tools/repair.js";
 import { createBasicMemory } from "../utils/memory.js";
 import { getModel } from "../utils/models.js";
 

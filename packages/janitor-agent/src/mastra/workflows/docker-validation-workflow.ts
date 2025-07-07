@@ -7,8 +7,9 @@ import {
 	buildDockerImage,
 	findDockerfiles,
 	getContainerLogs,
+	isCudaDockerfile,
 	runDockerContainer,
-} from "../tools/docker-tools";
+} from "../tools/docker-tools.js";
 
 const retryConfig = {
 	attempts: 1,
@@ -135,6 +136,8 @@ const dockerRunStep = createStep({
 		success: z.boolean(),
 		containerId: z.string().optional(),
 		error: z.string().optional(),
+		skipped: z.boolean().optional(),
+		skipReason: z.string().optional(),
 	}),
 	execute: async ({ inputData }) => {
 		// Check if the previous step was successful
@@ -150,7 +153,48 @@ const dockerRunStep = createStep({
 		console.log("----------------------------------------------------------------\n");
 
 		const imageName = inputData.imageName;
+		const dockerfilePath = inputData.dockerfilePath;
+
 		console.log(`Running container from image: ${imageName}`);
+
+		// Check if this is a CUDA-based image
+		const isCuda = dockerfilePath ? isCudaDockerfile(dockerfilePath) : false;
+		console.log(`CUDA detection: ${isCuda ? "CUDA-based image detected" : "Non-CUDA image"}`);
+
+		// Check GPU availability (simplified check here - the actual check happens in runDockerContainer)
+		let hasGpu = false;
+		try {
+			const { spawn } = require("child_process");
+			await new Promise<number>(resolve => {
+				const proc = spawn("nvidia-smi", [], { stdio: "ignore" });
+				proc.on("close", (code: number) => {
+					hasGpu = code === 0;
+					resolve(code);
+				});
+				proc.on("error", () => {
+					hasGpu = false;
+					resolve(1);
+				});
+			});
+		} catch (error) {
+			hasGpu = false;
+		}
+
+		console.log(`GPU availability: ${hasGpu ? "available" : "not available"}`);
+
+		// If CUDA image but no GPU available, skip container validation
+		if (isCuda && !hasGpu) {
+			console.log("⚠️  CUDA image detected but no GPU available");
+			console.log("🚫 Skipping container validation (build-only validation)");
+			console.log("ℹ️  Note: Full validation requires GPU-enabled instance");
+
+			return {
+				success: true,
+				skipped: true,
+				skipReason:
+					"CUDA image requires GPU for validation, but no GPU detected. Image build was successful.",
+			};
+		}
 
 		try {
 			// Generate a container name based on image name
@@ -196,14 +240,35 @@ const dockerLogsStep = createStep({
 		success: z.boolean(),
 		containerId: z.string().optional(),
 		error: z.string().optional(),
+		skipped: z.boolean().optional(),
+		skipReason: z.string().optional(),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
 		logs: z.string().optional(),
 		lineCount: z.number().optional(),
 		error: z.string().optional(),
+		skipped: z.boolean().optional(),
+		skipReason: z.string().optional(),
 	}),
 	execute: async ({ inputData }) => {
+		// Check if the previous step was skipped
+		if (inputData.skipped) {
+			console.log("\n----------------------------------------------------------------");
+			console.log("📊  DOCKER VALIDATION: Step 3: check container logs");
+			console.log("----------------------------------------------------------------\n");
+			console.log("⚠️  Container run was skipped, skipping log collection");
+			console.log(`📝 Reason: ${inputData.skipReason}`);
+
+			return {
+				success: true,
+				skipped: true,
+				skipReason: inputData.skipReason,
+				logs: "Container run skipped - no logs available",
+				lineCount: 0,
+			};
+		}
+
 		// Check if the previous step was successful
 		if (!inputData.success || !inputData.containerId) {
 			return {
@@ -266,6 +331,8 @@ const generateReportStep = createStep({
 		logs: z.string().optional(),
 		lineCount: z.number().optional(),
 		error: z.string().optional(),
+		skipped: z.boolean().optional(),
+		skipReason: z.string().optional(),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),
@@ -291,6 +358,8 @@ const generateReportStep = createStep({
 		const dockerfilePath = buildResult?.dockerfilePath;
 		const imageName = buildResult?.imageName;
 		const containerId = runResult?.containerId;
+		const wasSkipped = runResult?.skipped || logsResult?.skipped;
+		const skipReason = runResult?.skipReason || logsResult?.skipReason;
 
 		// Collect errors from steps
 		const errors: Record<string, string> = {};
@@ -306,27 +375,42 @@ const generateReportStep = createStep({
 
 		// Determine overall success
 		const hasErrors = Object.keys(errors).length > 0;
-		const allStepsCompleted =
-			repoPath &&
-			dockerfilePath &&
-			imageName &&
-			containerId &&
-			logsResult &&
-			logsResult.success; // Check logs step success flag, not content
+		let allStepsCompleted = false;
+
+		if (wasSkipped) {
+			// If container run was skipped, consider it successful if build worked
+			allStepsCompleted = repoPath && dockerfilePath && imageName && buildResult?.success;
+		} else {
+			// Normal validation path
+			allStepsCompleted =
+				repoPath &&
+				dockerfilePath &&
+				imageName &&
+				containerId &&
+				logsResult &&
+				logsResult.success;
+		}
+
 		const overallSuccess = !hasErrors && allStepsCompleted;
 
 		// Generate report
-		const report = `# Docker Validation Report
-* repository:${repoName}
-* status: ${overallSuccess ? "✅ passed" : "❌ failed"}
-${
-	!overallSuccess && hasErrors
-		? `* errors:\n${Object.entries(errors)
-				.map(([step, error]) => `- ${step}: ${error}`)
-				.join("\n")}`
-		: ""
-}
-`;
+		let report = `# Docker Validation Report
+* repository: ${repoName}
+* status: ${overallSuccess ? "✅ passed" : "❌ failed"}`;
+
+		if (wasSkipped) {
+			report += `
+* validation: ⚠️ partial (build-only)
+* reason: ${skipReason}`;
+		}
+
+		if (!overallSuccess && hasErrors) {
+			report += `
+* errors:
+${Object.entries(errors)
+	.map(([step, error]) => `  - ${step}: ${error}`)
+	.join("\n")}`;
+		}
 
 		return {
 			success: true,

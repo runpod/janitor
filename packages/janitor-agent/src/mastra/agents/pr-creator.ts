@@ -3,8 +3,8 @@ import { MCPConfiguration } from "@mastra/mcp";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import { read_file } from "../tools/file-system-tools";
-import { getModel } from "../utils/models";
+import { read_file } from "../tools/file-system-tools.js";
+import { getModel } from "../utils/models.js";
 
 // Load environment variables
 dotenv.config({ path: ".env" });

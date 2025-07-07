@@ -1,10 +1,10 @@
-# Janitor AWS Cloud Runner Infrastructure
+# Janitor AWS Infrastructure
 
-This directory contains the infrastructure code for deploying the Janitor system on AWS using disposable GPU instances.
+> Infrastructure as Code for running Janitor agents on disposable AWS GPU instances
 
 ## 🏗️ Architecture Overview
 
-The AWS cloud runner creates:
+The AWS infrastructure creates:
 
 -   **EC2 Launch Templates**: Pre-configured instance templates for reproducible deployments
 -   **ECR Repository**: Container registry for Janitor Docker images
@@ -30,105 +30,24 @@ infra/
 └── repos.yaml              # Repository list for processing
 ```
 
-## 🚀 Quick Start
+## 🔧 AWS Configuration
 
-### Prerequisites
+### Required IAM Permissions
 
-1. **AWS CLI**: [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-2. **AWS Credentials**: Configure with appropriate permissions
-3. **Docker**: For building and running containers locally
-4. **Make**: For using the provided Makefile commands
+Your AWS credentials need permissions for:
 
-### 1. Configure AWS Credentials
+**AWS Managed Policies (recommended):**
 
-```bash
-# Create a new AWS profile for Janitor
-aws configure --profile runpod-janitor
+-   `PowerUserAccess` (for development)
 
-# Set environment variables (or create .env file in project root)
-export AWS_PROFILE=runpod-janitor
-export AWS_REGION=eu-west-2
-export ACCOUNT_ID=123456789012  # Your AWS account ID
-```
+**Or granular policies:**
 
-### 2. Test the Concept (Recommended First Step)
-
-Before deploying full infrastructure, test with a simple instance:
-
-```bash
-# Make the script executable
-chmod +x infra/scripts/launch-test-instance.sh
-
-# Launch a test instance
-./infra/scripts/launch-test-instance.sh
-
-# Check the output for instance details and cleanup commands
-```
-
-This will:
-
--   Launch a `t3.micro` instance with Docker pre-installed
--   Run basic validation tests
--   Generate a test report
--   Provide cleanup instructions
-
-### 3. Deploy Full Infrastructure
-
-```bash
-# From project root directory
-
-# Initialize Terraform
-make infra-init
-
-# Plan infrastructure changes
-make infra-plan ENV=dev
-
-# Apply infrastructure
-make infra-apply ENV=dev
-
-# Check status
-make status ENV=dev
-```
-
-### 4. Build and Deploy Janitor Image
-
-```bash
-# Build and push Janitor Docker image to ECR
-make image
-
-# The image will be available at:
-# {ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/janitor:latest
-```
-
-### 5. Run Janitor in the Cloud
-
-```bash
-# Trigger a cloud Janitor run
-make run-janitor ENV=dev
-
-# Fetch the execution reports
-make fetch-report ENV=dev
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file in the project root:
-
-```bash
-# AWS Configuration
-AWS_PROFILE=runpod-janitor
-AWS_REGION=eu-west-2
-ACCOUNT_ID=123456789012
-
-# Optional: EC2 Key Pair for SSH access
-EC2_KEY_NAME=your-key-pair-name
-
-# Development Settings
-DOCKER_TAG=latest
-REPOS_FILE=infra/repos.yaml
-```
+-   `AmazonEC2FullAccess`
+-   `IAMFullAccess`
+-   `AmazonS3FullAccess`
+-   `CloudWatchFullAccess`
+-   `AmazonEC2ContainerRegistryFullAccess`
+-   `AmazonSSMFullAccess`
 
 ### Repository Configuration
 
@@ -149,26 +68,34 @@ config:
 
 ### Environment-Specific Settings
 
--   **Development** (`env/dev.tfvars`): Uses `t3.micro` instances for cost-effective testing
--   **Production** (`env/prod.tfvars`): Uses `g5.xlarge` GPU instances for real workloads
+**Development** (`env/dev.tfvars`):
+
+-   `t3.micro` instances (free tier eligible)
+-   Basic logging and monitoring
+
+**Production** (`env/prod.tfvars`):
+
+-   `g5.xlarge` GPU instances (~$1/hour)
+-   Enhanced monitoring and alerting
 
 ## 🖥️ GPU Support
 
-### Building GPU AMI
+### Building Custom GPU AMI
 
 For GPU workloads, build a custom AMI with NVIDIA drivers:
 
 ```bash
 # Build GPU-optimized AMI with Packer
 make build-ami
-
-# This creates an AMI based on AWS Deep Learning AMI with:
-# - NVIDIA drivers and CUDA
-# - Docker with GPU support
-# - Pre-installed Janitor dependencies
 ```
 
-### Using GPU Instances
+This creates an AMI with:
+
+-   NVIDIA drivers and CUDA
+-   Docker with GPU support
+-   Pre-installed Janitor dependencies
+
+### GPU Instance Configuration
 
 Update your environment configuration:
 
@@ -195,16 +122,16 @@ All instance activity is logged to CloudWatch:
     -   `{instance-id}/janitor-run` - Janitor execution
     -   `{instance-id}/docker` - Docker container logs
 
-### SSH Access (Optional)
+### SSH Access (for debugging)
 
-If you configured an EC2 key pair:
+Configure an EC2 key pair for SSH access:
 
 ```bash
-# Get instance IP
-make status ENV=dev
+# Add to your .env file
+EC2_KEY_NAME=your-key-pair-name
 
 # SSH to instance
-ssh -i ~/.ssh/your-key.pem ec2-user@{instance-ip}
+make ssh ENV=dev
 
 # Check logs on instance
 sudo tail -f /var/log/janitor-bootstrap.log
@@ -213,14 +140,10 @@ sudo tail -f /var/log/janitor-runner.log
 
 ### Execution Reports
 
-Reports are automatically uploaded to S3:
+Reports are automatically uploaded to S3 and can be downloaded with:
 
 ```bash
-# Download all reports
 make fetch-report ENV=dev
-
-# Reports are saved to ./reports/
-ls -la reports/
 ```
 
 ## 💰 Cost Management
@@ -228,46 +151,36 @@ ls -la reports/
 ### Development Environment
 
 -   **Instance**: `t3.micro` (free tier eligible)
--   **Storage**: EBS GP3 volume for Docker layer caching
 -   **Expected cost**: $0-2/day when idle
 
 ### Production Environment
 
 -   **Instance**: `g5.xlarge` GPU instance (~$1/hour)
 -   **Auto-shutdown**: Instances terminate after job completion
--   **Spot instances**: Can be configured for 50-70% cost savings
 
-### Cost Optimization Tips
+### Cost Optimization
 
-1. **Use spot instances** for non-critical workloads
-2. **Configure auto-shutdown** to prevent idle costs
-3. **Use appropriate instance sizes** for your workload
-4. **Monitor usage** with AWS Cost Explorer
+1. Use spot instances for non-critical workloads
+2. Configure auto-shutdown to prevent idle costs
+3. Monitor usage with AWS Cost Explorer
+4. Use appropriate instance sizes for workload
 
-## 🧪 Testing
+## 🧪 Testing Infrastructure
+
+### Quick Test Instance
+
+Test the concept before full deployment:
+
+```bash
+# Launch simple test instance
+./infra/scripts/launch-test-instance.sh
+```
 
 ### CI Validation
 
 ```bash
-# Run all CI checks
+# Validate Terraform and Packer configurations
 make ci
-
-# This validates:
-# - Terraform configuration syntax
-# - Packer template validity
-# - Infrastructure best practices
-```
-
-### Manual Testing
-
-```bash
-# Test with basic Docker functionality
-./infra/scripts/launch-test-instance.sh
-
-# Test with full infrastructure
-make infra-apply ENV=dev
-make run-janitor ENV=dev
-make fetch-report ENV=dev
 ```
 
 ## 🗑️ Cleanup
@@ -277,90 +190,64 @@ make fetch-report ENV=dev
 ```bash
 # Destroy all resources for an environment
 make destroy ENV=dev
-
-# This removes:
-# - EC2 instances and launch templates
-# - S3 bucket and contents
-# - IAM roles and policies
-# - CloudWatch log groups
-# - Security groups
 ```
 
-### Manual Cleanup
-
-If automated cleanup fails:
+### Manual Cleanup (if needed)
 
 ```bash
 # List and terminate instances
-aws ec2 describe-instances --profile $AWS_PROFILE --region $AWS_REGION \
-  --filters "Name=tag:Project,Values=janitor-dev"
-
+aws ec2 describe-instances --filters "Name=tag:Project,Values=janitor-dev"
 aws ec2 terminate-instances --instance-ids i-1234567890abcdef0
 
-# Delete security groups
+# Delete security groups and S3 buckets
 aws ec2 delete-security-group --group-id sg-1234567890abcdef0
-
-# Empty and delete S3 bucket
-aws s3 rm s3://bucket-name --recursive
-aws s3 rb s3://bucket-name
+aws s3 rm s3://bucket-name --recursive && aws s3 rb s3://bucket-name
 ```
 
-## 🔒 Security Considerations
+## 🔒 Security Best Practices
 
-### IAM Permissions
+### IAM Configuration
 
-Instances use least-privilege IAM roles with permissions only for:
-
--   ECR image pulling
--   S3 report uploading
--   CloudWatch logging
--   SSM remote access
+-   Instances use least-privilege IAM roles
+-   Permissions limited to ECR, S3, CloudWatch, SSM
 
 ### Network Security
 
--   **Security groups**: Minimal inbound access (SSH optional)
--   **Outbound**: Full internet access for package downloads
--   **VPC**: Uses default VPC (customize for production)
+-   Minimal inbound access (SSH optional)
+-   Uses default VPC (customize for production)
+-   Security groups with restricted access
 
-### Best Practices
+### Operational Security
 
-1. **Rotate credentials** regularly
-2. **Use separate AWS accounts** for different environments
-3. **Enable CloudTrail** for audit logging
-4. **Configure AWS Config** for compliance monitoring
-5. **Use separate AWS profiles** to avoid credential conflicts
+1. Rotate credentials regularly
+2. Use separate AWS accounts for environments
+3. Enable CloudTrail for audit logging
+4. Monitor usage and costs
 
 ## 📚 Troubleshooting
 
-### Common Issues
+### Common Infrastructure Issues
 
-**Issue**: Terraform fails with permission errors
-**Solution**: Ensure your AWS credentials have sufficient permissions for EC2, IAM, S3, and CloudWatch
+**Terraform fails with permission errors:**
 
-**Issue**: Instance fails to start
-**Solution**: Check CloudWatch logs for bootstrap errors
+-   Verify AWS credentials have required IAM policies
+-   Check AWS profile configuration
 
-**Issue**: Docker commands fail
-**Solution**: Ensure ec2-user is in docker group and Docker service is running
+**Instance fails to start:**
 
-**Issue**: Reports not uploading to S3
-**Solution**: Verify IAM permissions and S3 bucket configuration
+-   Check CloudWatch logs for bootstrap errors
+-   Verify AMI availability in your region
 
-### Getting Help
+**Reports not uploading:**
 
-1. **Check CloudWatch logs** for detailed error messages
-2. **Review instance user data** for bootstrap issues
-3. **Validate Terraform configuration** with `make ci`
-4. **Test with simple instance** using `launch-test-instance.sh`
+-   Verify IAM permissions for S3
+-   Check CloudWatch logs for error details
 
-## 🔄 Development Workflow
+### Debugging Steps
 
-1. **Local testing**: Use the Janitor agent locally first
-2. **Simple validation**: Test with `launch-test-instance.sh`
-3. **Infrastructure deployment**: Deploy with Terraform
-4. **Image building**: Build and push Docker images
-5. **Cloud execution**: Run Janitor in the cloud
-6. **Report analysis**: Download and review execution reports
-7. **Iteration**: Refine and repeat
+1. Check CloudWatch logs for detailed error messages
+2. Test with `launch-test-instance.sh` for simpler debugging
+3. Validate configuration with `make ci`
+4. Use SSH access for direct instance inspection
 
-This infrastructure enables cost-effective, scalable Docker repository validation and maintenance using disposable AWS GPU instances.
+For general usage and development questions, see the [main project README](../README.md) and [development conventions](../docs/conventions.md).

@@ -1,46 +1,165 @@
-# Worker Maintainer Project Conventions
+# Janitor Agent Project Conventions
 
-This document outlines the conventions, patterns, and lessons learned during the development of the
-Worker Maintainer project. Use this as a reference for future development and to onboard new
-contributors.
+This document outlines the conventions, patterns, and operational procedures for the Janitor Agent project. This is a monorepo containing both the agent code and infrastructure for running Docker repository validation on AWS.
 
 ## Project Structure
 
-### Directory Organization
+### Monorepo Organization
 
-- Place all Mastra-related code in `src/mastra/` directory
-- Organize by component type:
-    - Agents: `src/mastra/agents/`
-    - Tools: `src/mastra/tools/`
-    - Workflows: `src/mastra/workflows/`
-- Keep test files with `test-` prefix in `src/` directory
-- Use index files to export components from each directory
+This is a monorepo with the following key packages:
 
-### Export Patterns
+```
+janitor/
+├── packages/
+│   └── janitor-agent/          # Main agent application
+│       ├── src/mastra/         # Mastra framework code
+│       ├── docker/             # Docker configuration
+│       ├── tests/              # Test files
+│       └── package.json        # Node.js dependencies
+├── infra/                      # Infrastructure as Code
+│   ├── terraform/              # Terraform configurations
+│   ├── packer/                 # AMI building
+│   └── scripts/                # Infrastructure scripts
+├── scripts/                    # Deployment and utility scripts
+├── Makefile                    # Primary orchestration interface
+└── docs/                       # Documentation
+```
 
-- Create agent instances in their own files (e.g., `repository-repair-agent.ts`)
-- Export core agent creation functions (e.g., `createRepositoryRepairAgent`)
-- Export agent instances from `src/mastra/agents/index.ts`
-- Register all components in the main Mastra instance in `src/mastra/index.ts`
+### Package Responsibilities
 
-## Tool Implementation Approaches
+**`packages/janitor-agent/`**
 
-### Direct Tool Integration (PREFERRED)
+-   Contains the Mastra-based agent system
+-   Docker repository validation logic
+-   GPU-aware container testing
+-   Local development and testing tools
+
+**`infra/`**
+
+-   Terraform configurations for AWS infrastructure
+-   Packer scripts for building custom AMIs
+-   Bootstrap and deployment scripts
+-   Environment-specific configurations
+
+**Root Level**
+
+-   `Makefile`: Primary interface for all operations
+-   `scripts/`: Cross-cutting deployment utilities
+-   Configuration files and documentation
+
+## Environment Setup
+
+### Required Environment Variables
+
+Create a `.env` file in the project root with:
+
+```bash
+# AWS Configuration
+AWS_PROFILE=your-profile
+AWS_REGION=us-east-1
+ACCOUNT_ID=123456789012
+
+# API Keys
+ANTHROPIC_API_KEY=your-anthropic-key
+GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token
+
+# Optional (for debugging)
+SSH_KEY_PATH=~/.ssh/janitor-key
+```
+
+### Prerequisites
+
+-   AWS CLI configured with appropriate permissions
+-   Node.js and npm/pnpm installed
+-   Terraform installed
+-   Docker installed (for local testing)
+-   SSH key pair for AWS instances
+
+## Deployment and Operations
+
+### Primary Workflow Commands
+
+The Makefile provides the primary interface for all operations:
+
+```bash
+# Instance Management
+make launch-instance ENV=dev    # Launch new EC2 instance
+make check-instances ENV=dev    # Check running instances
+make kill-instances ENV=dev     # Terminate all instances
+make ssh ENV=dev               # SSH into instance
+make ssh-info ENV=dev          # Show SSH connection details
+
+# Monitoring and Logs
+make logs ENV=dev              # Dump all logs and exit
+make logs-all ENV=dev          # Follow logs in real-time
+make fetch-report ENV=dev      # Get validation reports
+
+# Development
+make build                     # Build Docker image locally
+make test-local                # Run local tests
+```
+
+### Deployment Environments
+
+**Development (`ENV=dev`)**
+
+-   Uses `infra/terraform/env/dev.tfvars`
+-   t3.micro instances (no GPU)
+-   CloudWatch logging enabled
+-   Temporary instances for testing
+
+**Production (`ENV=prod`)**
+
+-   Uses `infra/terraform/env/prod.tfvars`
+-   GPU-enabled instances
+-   Enhanced monitoring and alerting
+-   Persistent infrastructure
+
+### Complete Deployment Workflow
+
+```bash
+# 1. Launch instance
+make launch-instance ENV=dev
+
+# 2. Monitor logs (real-time)
+make logs-all ENV=dev
+
+# 3. Get validation reports when ready
+make fetch-report ENV=dev
+
+# 4. Clean up
+make kill-instances ENV=dev
+```
+
+## Agent Architecture
+
+### Core Components
+
+**Janitor Agent (`packages/janitor-agent/src/mastra/agents/janitor.ts`)**
+
+-   Main orchestration agent
+-   Coordinates validation workflow
+-   Makes decisions about repository handling
+
+**PR Creator Agent (`packages/janitor-agent/src/mastra/agents/pr-creator.ts`)**
+
+-   Creates pull requests with fixes
+-   Handles GitHub API interactions
+-   Manages PR content and formatting
+
+**Development Agent (`packages/janitor-agent/src/mastra/agents/dev.ts`)**
+
+-   Development and testing utilities
+-   Local validation workflows
+
+### Tool Implementation Patterns
+
+#### Direct Tool Integration (PREFERRED)
 
 **ALWAYS use this approach unless you have a specific reason to use MCP servers.**
 
 Tools should be implemented directly as Mastra tools using the `createTool` function from
-`@mastra/core/tools`. This is the simplest and most efficient approach that should be used for most
-use cases.
-
-Key characteristics:
-
-- Tools are defined in dedicated files (e.g., `git-tools.ts`, `docker-tools.ts`)
-- Core functionality is implemented as standalone exportable functions
-- Tools are created using `createTool` and registered with agents directly
-- No separate server process is required
-
-Example:
+`@mastra/core/tools`. This is the simplest and most efficient approach.
 
 ```typescript
 // Implementation in docker-tools.ts
@@ -60,459 +179,270 @@ export const dockerBuildTool = createTool({
     }),
     description: "Builds a Docker image from a Dockerfile",
     execute: async ({ context }) => {
-        // Call the core function with context parameters
         return await buildDockerImage(context.dockerfilePath, context.imageName, context.platform);
     },
 });
 ```
 
-Usage in workflow:
+#### Key Tool Categories
+
+**Git Tools (`git-tools.ts`)**
+
+-   Repository checkout with organization fallback
+-   Auto-retry with "runpod-workers" fallback organization
+-   Timeout controls and error handling
+
+**Docker Tools (`docker-tools.ts`)**
+
+-   GPU-aware container execution
+-   Cross-platform Dockerfile detection
+-   Build and validation operations
+
+**File System Tools (`file-system-tools.ts`)**
+
+-   Cross-platform file operations
+-   Repository scanning and analysis
+
+**Pull Request Tools (`pull-request.ts`)**
+
+-   GitHub API integration via MCP
+-   PR creation and management
+
+## GPU-Aware Validation System
+
+### Core Innovation
+
+The system intelligently handles CUDA vs non-CUDA Docker images based on GPU availability:
 
 ```typescript
-// Option 1: Import and use functions directly in workflow steps
-const { buildDockerImage } = await import("../../docker-tools.js");
-const result = await buildDockerImage(dockerfilePath, imageTag, platform);
-
-// Option 2: Register and use via the agent's tools configuration
-tools: {
-  gitCheckoutTool,
-  dockerBuildTool,
-  dockerRunTool,
-}
-```
-
-### MCP Server Integration (ONLY FOR SPECIFIC CASES)
-
-**DO NOT use this approach unless you need to run tools in a separate process or integrate with
-external MCP servers.**
-
-MCP (Model Context Protocol) servers should only be used when:
-
-1. You need to run tools in a separate process for isolation or security
-2. You're integrating with external MCP servers (e.g., GitHub, third-party services)
-3. You need cross-language tool execution
-
-Key characteristics:
-
-- Requires implementing a separate MCP server process
-- Adds complexity with additional serialization/deserialization
-- Requires maintaining both tool implementation and server integration
-- Uses network communication between the main process and tool process
-
-When using external MCP servers (like the GitHub server), configure them in the MCP configuration:
-
-```typescript
-const mcp = new MCPConfiguration({
-    servers: {
-        github: {
-            command: "npx",
-            args: ["-y", "@modelcontextprotocol/server-github"],
-            env: {
-                /* environment variables */
-            },
-        },
-    },
-});
-```
-
-#### GitHub MCP Server Configuration
-
-When working with the GitHub MCP server specifically:
-
-1. **GitHub Personal Access Token**: Always store GitHub tokens in `.env` with the name
-   `GITHUB_PERSONAL_ACCESS_TOKEN` and ensure it has appropriate repository permissions.
-
-2. **MCP Server Configuration**: Configure the GitHub MCP server with the proper command and
-   arguments based on your operating system:
-
-    **For Windows:**
-
-    ```typescript
-    const githubMCP = new MCPConfiguration({
-        id: "github-server-agent",
-        servers: {
-            github: {
-                command: "cmd",
-                args: ["/c", "npx -y @modelcontextprotocol/server-github"],
-                env: {
-                    GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
-                },
-            },
-        },
-    });
-    ```
-
-    **For Mac/Linux:**
-
-    ```typescript
-    const githubMCP = new MCPConfiguration({
-        id: "github-server-agent",
-        servers: {
-            github: {
-                command: "npx",
-                args: ["-y", "@modelcontextprotocol/server-github"],
-                env: {
-                    GITHUB_PERSONAL_ACCESS_TOKEN: process.env.GITHUB_PERSONAL_ACCESS_TOKEN || "",
-                },
-            },
-        },
-    });
-    ```
-
-## Agent Architecture
-
-### Agent-as-Tool Pattern (REQUIRED)
-
-When one agent needs to use another agent, always follow the agent-as-tool pattern:
-
-1. **Create a specialized agent creation function**:
-
-    - Define a function in the agent file that creates and returns the agent
-    - Example: `createRepositoryRepairAgent()` in `repository-repair-agent.ts`
-
-2. **Create a tool that uses this agent directly**:
-
-    - Import the agent creation function in your tool file
-    - Create the agent instance within the tool's execute function
-    - Use the agent directly by calling its generate() method
-    - Process the agent's response and return a structured result
-
-3. **Never use wrapper functions that internally create and use agents**:
-
-    - AVOID pattern: `repairRepository(repoPath, errorReport)` that internally creates and uses an
-      agent
-    - PREFERRED pattern: Tool creates and directly uses the agent instance
-
-4. **Return clear, structured results from tools**:
-    - Extract and format relevant information from the agent's response
-    - Use consistent property naming across tools
-
-Example of the correct agent-as-tool pattern:
-
-```typescript
-// In repository-repair-tool.ts
-import { createTool } from "@mastra/core/tools";
-import { createRepositoryRepairAgent } from "../agents/repository-repair-agent.js";
-
-import { getMastraInstance } from "../utils/mastra";
-
-export const repositoryRepairTool = createTool({
-    id: "Repository Repair",
-    // ...schema and description...
-    execute: async ({ context }) => {
-        try {
-            const mastra = getMastraInstance();
-
-            // Create the agent directly
-            const repairAgent = mastra.getAgent("repairAgent");
-
-            // Generate prompt
-            const prompt = `...${context.repository}...${context.errors}...`;
-
-            // Use the agent directly
-            const agentResponse = await repairAgent.generate(prompt);
-
-            // Process the response
-            const fixes = extractFixes(agentResponse.text);
-
-            // Return structured result
-            return {
-                success: true,
-                fixes: fixes,
-                // ...other properties...
-            };
-        } catch (error) {
-            return { success: false, error: String(error) };
-        }
-    },
-});
-```
-
-This pattern provides several benefits:
-
-- Clearer separation of concerns
-- Explicit agent creation and usage
-- Better testability
-- More consistent with Mastra's recommended patterns
-
-### Component Communication Patterns
-
-When implementing agent workflows with multiple components:
-
-1. **Validator-Repair Pattern**:
-
-    - Validator agents should use tool interfaces to request repairs
-    - Repair tools should connect to specialized repair agents
-    - Each component should have a single responsibility
-    - Use clear signaling between components for next actions
-
-2. **Tool Response Structure**:
-
-    - Always include a `success` boolean flag
-    - Return rich metadata needed for subsequent steps
-    - Use consistent property naming across tools
-    - Signal when additional actions are required
-    - Example:
-        ```typescript
-        return {
-            success: true,
-            // Additional metadata for next steps
-            needsNextStep: true,
-            sourcePath: context.inputPath,
-        };
-        ```
-
-3. **Multiple Agent Coordination**:
-    - Use separation of concerns between specialized agents
-    - Orchestrator agents focus on coordination and decision-making
-    - Worker agents focus on specific tasks (validation, repair)
-    - Maintain clear communication interfaces between them
-
-## Git Operations
-
-### Repository Checkout Implementation
-
-We've created a robust Git checkout system with the following features:
-
-- **Direct Git Command Execution**: We use Node.js's `execSync` with proper error handling,
-  timeouts, and output capturing.
-- **Auto-retry with Organization Fallback**: If a repository is not found in the specified
-  organization, we automatically try with the "runpod-workers" organization as fallback.
-- **Timeout Controls**: Short timeout values (5s) prevent hanging on non-existent repositories.
-- **Content Verification**: After checkout, we list directory contents to verify success.
-- **Path Conventions**: Repositories are cloned to:
-    ```
-    <project_root>/repos/<organization>-<repository_name>
-    ```
-
-### Error Handling Best Practices
-
-- Use a wrapper function (`safeExecSync`) around `execSync` to handle errors consistently
-- Capture both stdout and stderr for comprehensive error reporting
-- Implement timeouts to prevent hanging processes
-- Include error classification for common Git failure scenarios (not found, timeout, etc.)
-- Return structured error objects rather than throwing exceptions
-
-## Docker Operations
-
-### Cross-Platform Support
-
-The Docker tools provide cross-platform compatibility, ensuring proper operation on both Windows and
-Linux:
-
-- Windows systems use manual directory scanning to find Dockerfiles
-- Linux systems use the `find` command with a fallback to manual scanning if it fails
-- Use platform detection (`process.platform === 'win32'`) to select the appropriate method
-
-### Logs Handling
-
-When dealing with Docker container logs:
-
-- Always consider containers with no logs as valid (not an error condition)
-- Check the success status of log retrieval operations, not the presence of logs
-- Use `lineCount` to indicate empty logs rather than treating them as failures
-- Include helpful messages in the report for empty logs (e.g., "No logs produced by container or
-  logs were empty. This is not an error.")
-
-## Environment Configuration
-
-### API Key Management
-
-- Store all API keys in `.env`
-- Follow standard naming conventions (e.g., `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)
-- Check for presence of required keys before agent initialization
-- Provide clear error messages when keys are missing
-
-### Model Configuration
-
-- Configure model parameters in the agent creation files
-- Use appropriate model identifiers for each AI provider:
-    - For Anthropic: Use correct versioned identifiers (e.g., `claude-3-sonnet-20240229`,
-      `claude-3-7-sonnet-latest`)
-    - For OpenAI: Use their model naming format (e.g., `gpt-4o`)
-- Verify model availability with your API key before deployment
-
-## Mastra Integration
-
-### Workflow-Agent Integration
-
-When connecting workflows with agents:
-
-1. **Create a Tool Wrapper**:
-
-    - Import the workflow directly in the tool file (avoid circular imports)
-    - Execute the workflow using `createRun()` and `start()`
-    - Extract and format the report from workflow results
-
-2. **Access the Mastra Instance**:
-    - Get it via the `mastra` parameter in the tool's execute function
-    - Don't import the mastra instance directly in tool files
-    - Use it to access workflows: `mastra.getWorkflow("workflowName")`
-
-Example of a tool that executes a workflow:
-
-```typescript
-import { getMastraInstance } from "utils/mastra";
-
-export const dockerValidationTool = createTool({
-  id: "Docker Repository Validator",
-  description: "Validates a Docker repository",
-  inputSchema,
-  execute: async ({ context }) => {
+// GPU Detection Logic
+const checkGpuAvailability = () => {
     try {
-      const mastra = getMastraInstance();
-
-      const workflow = mastra.getWorkflow("dockerValidationWorkflow");
-      const { runId, start } = workflow.createRun();
-      const result = await start({
-        triggerData: { repository: context.repository, ... }
-      });
-
-      // Extract the report from results
-      const reportStep = result.results?.report;
-      if (reportStep?.status === "success") {
-        return {
-          success: true,
-          report: reportStep.output.report
-        };
-      }
-
-      return { success: false, error: "Report generation failed" };
-    } catch (error) {
-      return { success: false, error: String(error) };
+        execSync("nvidia-smi", { stdio: "ignore" });
+        return true;
+    } catch {
+        return false;
     }
-  },
-});
+};
+
+// CUDA Detection Logic
+const isCudaDockerfile = (dockerfileContent) => {
+    const cudaPatterns = [
+        /FROM.*nvidia.*cuda/i,
+        /FROM.*pytorch.*cuda/i,
+        /nvidia-smi/i,
+        /CUDA_VERSION/i,
+    ];
+    return cudaPatterns.some((pattern) => pattern.test(dockerfileContent));
+};
 ```
 
-### Step Design
+### Validation Strategy
 
-When designing workflow steps:
+**Non-CUDA Images (any instance):**
 
-1. **Give Clear IDs**: Use descriptive step IDs (e.g., `checkout`, `build`, `report`) that match how
-   you'll access them in results
-2. **Handle Empty Outputs**: Consider empty results like logs as valid rather than errors
-3. **Use Report Pattern**: Create a dedicated report generation step that summarizes all previous
-   steps
+-   Full validation: build + run + logs collection
+-   Complete container testing
 
-### Tool Implementation
+**CUDA Images + No GPU Available:**
 
-Tools in Mastra should follow these patterns:
+-   Build-only validation with clear messaging
+-   Skip container execution to avoid GPU errors
 
-1. **Tool Creation**:
+**CUDA Images + GPU Available:**
 
-    - Use `createTool` from `@mastra/core/tools`
-    - Implement tools in a dedicated file (e.g., `git-tools.ts`, `docker-tools.ts`)
-    - Export both the core functions and the Mastra tool
+-   Full validation including container execution
+-   GPU-accelerated testing
 
-2. **Schema Definition**:
-
-    - Use Zod for schema validation
-    - Provide clear descriptions for each field
-    - Match UI expectations in the schema (separate fields vs combined values)
-
-3. **Function Execution**:
-
-    - Implement core functionality in a standalone function
-    - Have the tool's execute function call that standalone function
-    - Provide detailed logging for debugging
-
-4. **Error Handling**:
-
-    - Return objects with a `success` property to indicate status
-    - Include error messages for failures
-    - Log detailed information to help with debugging
-
-5. **Tool Registration**:
-    - Register tools in an agent's configuration
-    - Make sure tool IDs match the UI expectation
-
-### Workflow Integration
-
-When integrating tools with workflows:
-
-1. For direct tool usage, import functionality from the tool's module:
+### Docker Command Adaptation
 
 ```typescript
-const { buildDockerImage } = await import("../../docker-tools.js");
+// Smart GPU flag inclusion
+const runDockerContainer = (imageTag, hasGpu, isCudaImage) => {
+    const gpuFlag = hasGpu && isCudaImage ? "--gpus all" : "";
+    const cmd = `docker run ${gpuFlag} --rm ${imageTag}`;
+    return execSync(cmd);
+};
 ```
 
-2. Call the function with parameters from the workflow context:
+## Infrastructure Management
 
-```typescript
-const result = await buildDockerImage(dockerfilePath, imageTag, platform);
+### AWS Resource Architecture
+
+**EC2 Instances:**
+
+-   Development: t3.micro (no GPU)
+-   Production: GPU-enabled instances (p3, g4dn series)
+-   Custom AMIs with pre-installed dependencies
+
+**CloudWatch Logging:**
+
+-   Log group: `/janitor-runner`
+-   Instance-specific log streams
+-   Real-time log streaming support
+
+**VPC and Security:**
+
+-   Public subnets for simplicity
+-   Security groups allowing SSH and HTTP/HTTPS
+-   Instance profiles with CloudWatch permissions
+
+### Terraform Structure
+
+```
+infra/terraform/
+├── main.tf                 # Main infrastructure definition
+├── env/
+│   ├── dev.tfvars         # Development environment variables
+│   └── prod.tfvars        # Production environment variables
+└── outputs.tf             # Infrastructure outputs
 ```
 
-3. Handle and propagate errors appropriately:
+### Custom AMI Building
+
+Uses Packer to create AMIs with pre-installed dependencies:
+
+```bash
+# Build custom AMI
+cd infra/packer
+packer build gpu-ami.pkr.hcl
+```
+
+## Logging and Monitoring
+
+### CloudWatch Integration
+
+**Log Commands:**
+
+```bash
+# Dump all logs for current instance and exit
+make logs ENV=dev
+
+# Follow logs in real-time with streaming
+make logs-all ENV=dev
+```
+
+**Log Filtering:**
+
+-   Automatically filters by current instance ID
+-   Handles cases where log streams don't exist yet
+-   Windows Git Bash compatible (`MSYS_NO_PATHCONV=1`)
+
+**Log Access Patterns:**
+
+```bash
+# Raw AWS CLI command (used internally)
+aws logs tail /janitor-runner \
+  --filter-pattern "[$INSTANCE_ID]" \
+  --follow \
+  --no-cli-pager
+```
+
+### Debugging Commands
+
+```bash
+# Check what instances are running
+make check-instances ENV=dev
+
+# Get SSH connection details
+make ssh-info ENV=dev
+
+# SSH into instance for debugging
+make ssh ENV=dev
+
+# Fetch validation reports
+make fetch-report ENV=dev
+```
+
+## Development Workflow
+
+### Local Development
+
+**Setup:**
+
+```bash
+cd packages/janitor-agent
+npm install
+cp .env.example .env  # Configure environment variables
+```
+
+**Local Testing:**
+
+```bash
+# Run specific tests
+npm run test:docker-validation
+npm run test:janitor-add-feature
+npm run test:pr-creator
+
+# Test against local repository
+./test-local.sh
+```
+
+**Docker Development:**
+
+```bash
+# Build image locally
+make build
+
+# Test container locally
+docker run --rm janitor-agent:latest
+```
+
+### Agent Testing Patterns
+
+**Direct Function Testing:**
 
 ```typescript
-if (!result.success) {
-    throw new Error(result.error || "Failed to build Docker image");
+// Test core functions directly
+import { buildDockerImage } from "../src/mastra/tools/docker-tools.js";
+
+const result = await buildDockerImage("./Dockerfile", "test:latest", "linux/amd64");
+expect(result.success).toBe(true);
+```
+
+**Agent Integration Testing:**
+
+```typescript
+// Test agent with workflows
+const workflow = mastra.getWorkflow("dockerValidationWorkflow");
+const { runId, start } = workflow.createRun();
+const result = await start({ triggerData: { repository: "test-repo" } });
+```
+
+### Cross-Platform Considerations
+
+**File Operations:**
+
+-   Windows: Manual directory scanning for Dockerfiles
+-   Linux: Use `find` command with fallback to manual scanning
+-   Platform detection: `process.platform === 'win32'`
+
+**Command Execution:**
+
+-   Use `shell: true` for cross-platform compatibility
+-   Handle Windows path separators properly
+-   Include `windowsHide: true` for clean output
+
+## Error Handling Patterns
+
+### Repository Operations
+
+**Git Checkout with Fallback:**
+
+```typescript
+// Try specified organization first, then fallback
+try {
+    await checkoutRepo(org, repo);
+} catch (error) {
+    if (error.includes("not found")) {
+        await checkoutRepo("runpod-workers", repo);
+    } else {
+        throw error;
+    }
 }
 ```
 
-## Testing Approaches
-
-### Test Organization
-
-- Name test files with the `test-` prefix followed by what is being tested
-- Examples: `test-repair-tool.ts`, `test-validator-repair-integration.ts`
-- Register all test scripts in `package.json` under "scripts" section
-- Use consistent naming patterns: `test:repair-tool`, `test:integration`
-- Create separate tests for:
-    - Direct function tests
-    - Tool interface tests
-    - Agent tests
-    - Integration tests between components
-
-### Direct Function Testing
-
-- Create dedicated test files for core functions (e.g., `test-docker-tools.ts`)
-- Test each function with valid and invalid inputs
-- Ensure comprehensive error handling
-
-### Workflow Testing
-
-- Test workflows directly using `createRun()` and `start()`
-- Verify each step's output and the final results
-- Test different input scenarios, including edge cases
-
-### Tool Testing
-
-- Test tools by directly calling the `execute` method with correct context
-- Use type assertions if needed to satisfy TypeScript requirements
-- Check tool results for expected output format and content
-
-### Agent Testing
-
-- Test agents by generating responses with specific prompts
-- Examine both the response text and tool results
-- Include proper error handling for agent responses
-
-### Cross-Platform Testing
-
-- Always test file operations on both Windows and Linux
-- Use platform detection to handle differences
-- Implement fallback mechanisms for platform-specific features
-
-### Integration Testing
-
-- Test individual components first (tools, agents)
-- Then test integration between components
-- Create mock repositories with known issues for testing
-- Verify the end-to-end workflow functions correctly
-
-## Common Issues & Solutions
-
-### Process Execution
-
-**Issue**: `execSync` can hang indefinitely without proper configuration.
-
-**Solution**:
-
-- Always set timeouts
-- Use `stdio: "pipe"` to capture output
-- Handle errors comprehensively
+**Timeout Handling:**
 
 ```typescript
 const options = {
@@ -525,61 +455,111 @@ const options = {
 };
 ```
 
-### Repository Naming
+### Docker Operations
 
-**Issue**: Repository names might come in different formats.
+**GPU Error Handling:**
 
-**Solution**:
+```typescript
+// Detect and handle GPU-related errors
+if (error.includes("could not select device driver") && error.includes("capabilities: [[gpu]]")) {
+    return { success: false, error: "GPU not available", skipContainer: true };
+}
+```
 
-- Parse the repository name to extract owner and repo parts
-- Support both combined format (`owner/repo`) and separate fields
-- Implement validation and fallbacks
+**Log Validation:**
 
-### Docker Logs Validation
+```typescript
+// Empty logs are valid, not errors
+const logs = await getContainerLogs(containerId);
+return {
+    success: true,
+    logs: logs || "",
+    lineCount: logs ? logs.split("\n").length : 0,
+    message: logs ? "Logs retrieved" : "No logs produced (not an error)",
+};
+```
 
-**Issue**: Empty logs can be valid but might be treated as failures.
+## Security and Best Practices
 
-**Solution**:
+### API Key Management
 
-- Check for operation success, not content presence
-- Consider empty logs as valid output
-- Provide clear indication in reports for empty logs
-- Add explanatory messages to empty log reports
+-   Store all secrets in `.env` file
+-   Never commit API keys to version control
+-   Use environment-specific configurations
+-   Validate key presence before operations
 
-### Circular Dependencies
+### AWS Security
 
-**Issue**: Importing the mastra instance in tools can create circular dependencies.
+-   Use least-privilege IAM policies
+-   Terminate instances after use
+-   Monitor CloudWatch costs
+-   Use instance profiles, not hardcoded credentials
 
-**Solution**:
+### GitHub Integration
 
-- Access the mastra instance through tool execution parameters
-- Define a clear import hierarchy
-- In agent tests, retrieve agent instances from mastra instead of direct imports
+-   Use personal access tokens with minimum required scopes
+-   Configure tokens for repository access only
+-   Store tokens securely in environment variables
+
+## Common Issues and Solutions
+
+### Instance Management
+
+**Issue**: Instances left running and incurring costs.
+**Solution**: Always use `make kill-instances ENV=dev` after testing.
+
+**Issue**: SSH key not found.
+**Solution**: Set `SSH_KEY_PATH` in `.env` or use default `~/.ssh/janitor-key`.
+
+### Logging
+
+**Issue**: Log streams not found for new instances.
+**Solution**: Wait a few minutes for logs to appear, or check if instance is running.
+
+**Issue**: Windows path conversion issues.
+**Solution**: Use `MSYS_NO_PATHCONV=1` prefix for AWS CLI commands.
+
+### Docker Validation
+
+**Issue**: GPU errors on non-GPU instances.
+**Solution**: System automatically detects and handles this with build-only validation.
+
+**Issue**: Container execution timeouts.
+**Solution**: Adjust timeout values in Docker execution commands.
 
 ## Future Enhancements
 
-Potential areas for improvement:
+### Infrastructure
 
-1. **Authentication Support**: Add GitHub token support for private repos
-2. **Branch Selection**: Allow specifying branches to check out
-3. **Depth Control**: Support shallow clones for large repositories
-4. **Progress Reporting**: Better progress indicators for long-running operations
-5. **Workspace Isolation**: Clone repos to isolated workspaces to prevent conflicts
-6. **Improved Log Analysis**: Add pattern matching for common Docker errors in logs
-7. **Enhanced Agent Debugging**: Log full agent thought processes for troubleshooting
+-   Auto-scaling based on workload
+-   Multi-region deployment support
+-   Cost optimization strategies
+-   Enhanced monitoring and alerting
+
+### Agent Capabilities
+
+-   Support for more repository types
+-   Enhanced error analysis and fixing
+-   Integration with more CI/CD systems
+-   Automated PR review and merging
+
+### Developer Experience
+
+-   Local development with GPU simulation
+-   Better debugging tools and interfaces
+-   Automated testing pipelines
+-   Performance monitoring and optimization
 
 ## Conclusion
 
-These conventions should guide future development on the Worker Maintainer project. They represent
-lessons learned through practical implementation and should evolve as the project grows.
+This document should serve as the primary reference for working with the Janitor Agent project. The monorepo structure allows for coordinated development of both agent logic and infrastructure, while the Makefile provides a unified interface for all operations.
 
-Remember that these conventions are not fixed rules - they should be continuously improved as new
-patterns and better practices emerge.
+Key principles:
 
-**IMPORTANT**: When creating new tools, always follow the direct tool integration approach using
-`createTool` unless you have a specific reason to use MCP servers. Consistency in implementation
-patterns is critical for maintainability.
+1. **Infrastructure as Code**: All AWS resources managed via Terraform
+2. **GPU-Aware Validation**: Smart handling of CUDA vs non-CUDA workloads
+3. **Clean Separation**: Packages for different concerns (agent, infrastructure)
+4. **Operational Simplicity**: Single Makefile interface for all operations
+5. **Cost Awareness**: Automatic cleanup and monitoring
 
-**REQUIRED**: For agent-to-agent communication, always follow the agent-as-tool pattern where tools
-directly create and use agent instances rather than calling functions that internally create and use
-agents. This ensures clear separation of concerns and better maintainability.
+Remember to always clean up AWS resources after testing and follow the established patterns for consistency and maintainability.

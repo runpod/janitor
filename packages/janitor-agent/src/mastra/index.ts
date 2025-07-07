@@ -2,11 +2,11 @@ import { Mastra } from "@mastra/core";
 import { ConsoleLogger } from "@mastra/core/logger";
 import { LibSQLStore } from "@mastra/libsql";
 
-import { dev } from "./agents/dev";
-import { janitor } from "./agents/janitor";
-import { prCreator } from "./agents/pr-creator";
-import { setMastraInstance } from "./utils/mastra";
-import { dockerValidationWorkflow } from "./workflows/docker-validation-workflow";
+import { dev } from "./agents/dev.js";
+import { janitor } from "./agents/janitor.js";
+import { prCreator } from "./agents/pr-creator.js";
+import { setMastraInstance } from "./utils/mastra.js";
+import { dockerValidationWorkflow } from "./workflows/docker-validation-workflow.js";
 
 export const mastra = new Mastra({
 	workflows: {
@@ -18,7 +18,7 @@ export const mastra = new Mastra({
 		prCreator,
 	},
 	storage: new LibSQLStore({
-		url: "file:./mastra.db",
+		url: "file:/tmp/mastra.db",
 	}),
 	logger: new ConsoleLogger({
 		name: "Mastra",

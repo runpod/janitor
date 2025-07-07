@@ -53,6 +53,7 @@ memory.db*
 
 # Environment files
 .env
+!.env.example
 
 # Node modules
 node_modules/
@@ -80,3 +81,4 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+reports

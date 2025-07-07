@@ -322,6 +322,47 @@ export const buildDockerImage = async (
 };
 
 /**
+ * Checks if GPUs are available on the system
+ */
+const checkGpuAvailability = async (): Promise<boolean> => {
+	try {
+		// Check if nvidia-smi command exists and works
+		const result = await spawnWithLogs("nvidia-smi", [], undefined, 5000);
+		return result.success;
+	} catch (error) {
+		// nvidia-smi not available or failed
+		return false;
+	}
+};
+
+/**
+ * Checks if a Dockerfile contains CUDA-related content
+ */
+export const isCudaDockerfile = (dockerfilePath: string): boolean => {
+	try {
+		const dockerfileContent = fs.readFileSync(dockerfilePath, "utf8").toLowerCase();
+
+		// Check for common CUDA indicators
+		const cudaIndicators = [
+			"nvidia/cuda",
+			"cuda:",
+			"nvidia-cuda",
+			"cudnn",
+			"nvidia-runtime",
+			"cuda-toolkit",
+			"nvidia-docker",
+			"gpu",
+			"nvidia/driver",
+		];
+
+		return cudaIndicators.some(indicator => dockerfileContent.includes(indicator));
+	} catch (error) {
+		console.warn(`Could not read Dockerfile to check for CUDA: ${error}`);
+		return false; // Assume non-CUDA if we can't read it
+	}
+};
+
+/**
  * Runs a Docker container from an image
  */
 export const runDockerContainer = async (
@@ -338,6 +379,10 @@ export const runDockerContainer = async (
 }> => {
 	try {
 		console.log(`Running Docker container from image: ${imageName}`);
+
+		// Check GPU availability
+		const hasGpu = await checkGpuAvailability();
+		console.log(`GPU availability: ${hasGpu ? "available" : "not available"}`);
 
 		// Generate container name if not provided
 		let finalContainerName;
@@ -363,7 +408,17 @@ export const runDockerContainer = async (
 		console.log(`Using container name: ${finalContainerName}`);
 
 		// Construct the run command args
-		const runArgs = ["run", "-d", "--gpus", "all", "--name", finalContainerName];
+		const runArgs = ["run", "-d"];
+
+		// Only add GPU support if GPUs are available
+		if (hasGpu) {
+			runArgs.push("--gpus", "all");
+			console.log(`Adding GPU support (--gpus all)`);
+		} else {
+			console.log(`Skipping GPU support (no GPUs detected)`);
+		}
+
+		runArgs.push("--name", finalContainerName);
 
 		// Add port mappings if provided
 		if (ports && ports.length > 0) {

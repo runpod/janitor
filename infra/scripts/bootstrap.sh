@@ -221,8 +221,8 @@ else
     log "INFO: No GPU available (this is expected for t3.micro instances)"
 fi
 
-# Run actual Janitor execution with Docker-in-Docker support
-log "Running Janitor container with Docker-in-Docker..."
+# Run actual Janitor execution with Docker-in-Docker support (as root)
+log "Running Janitor container with Docker-in-Docker (as root)..."
 docker run --rm \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /opt/janitor/repos:/app/repos \
@@ -235,6 +235,8 @@ docker run --rm \
     -e REPOS_FILE=$REPOS_FILE \
     -e LOG_GROUP=$LOG_GROUP \
     -e ACCOUNT_ID=$ACCOUNT_ID \
+    -e ANTHROPIC_API_KEY=${anthropic_api_key} \
+    -e GITHUB_PERSONAL_ACCESS_TOKEN=${github_personal_access_token} \
     $ECR_REPOSITORY:latest \
     main
 
@@ -279,6 +281,11 @@ EOF
 chmod +x /opt/janitor/*.sh
 chown ec2-user:ec2-user /opt/janitor/*.sh
 
+# Create log file with proper permissions
+log "Creating log file with proper permissions..."
+touch /var/log/janitor-runner.log
+chown ec2-user:ec2-user /var/log/janitor-runner.log
+
 # Create systemd service for Janitor (optional, for automatic runs)
 log "Creating Janitor systemd service..."
 cat > /etc/systemd/system/janitor-runner.service << 'EOF'
@@ -293,6 +300,8 @@ User=ec2-user
 ExecStart=/opt/janitor/run-janitor.sh
 StandardOutput=append:/var/log/janitor-runner.log
 StandardError=append:/var/log/janitor-runner.log
+Environment=ANTHROPIC_API_KEY=${anthropic_api_key}
+Environment=GITHUB_PERSONAL_ACCESS_TOKEN=${github_personal_access_token}
 
 [Install]
 WantedBy=multi-user.target

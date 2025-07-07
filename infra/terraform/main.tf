@@ -64,6 +64,18 @@ variable "key_name" {
   default     = null
 }
 
+variable "anthropic_api_key" {
+  description = "Anthropic API key for AI services"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_personal_access_token" {
+  description = "GitHub Personal Access Token for repository operations"
+  type        = string
+  sensitive   = true
+}
+
 # Local values
 locals {
   name_prefix = "janitor-${var.environment}"
@@ -266,6 +278,8 @@ locals {
     s3_bucket        = aws_s3_bucket.reports.bucket
     log_group        = aws_cloudwatch_log_group.janitor_runner.name
     account_id       = var.account_id
+    anthropic_api_key = var.anthropic_api_key
+    github_personal_access_token = var.github_personal_access_token
     # Add uppercase versions for the HERE documents in bootstrap.sh
     REGION           = var.region
     ENVIRONMENT      = var.environment
@@ -273,6 +287,8 @@ locals {
     S3_BUCKET        = aws_s3_bucket.reports.bucket
     LOG_GROUP        = aws_cloudwatch_log_group.janitor_runner.name
     ACCOUNT_ID       = var.account_id
+    ANTHROPIC_API_KEY = var.anthropic_api_key
+    GITHUB_PERSONAL_ACCESS_TOKEN = var.github_personal_access_token
   }))
 }
 

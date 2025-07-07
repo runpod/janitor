@@ -8,7 +8,7 @@ import { Memory } from "@mastra/memory";
 export function createBasicMemory() {
 	return new Memory({
 		storage: new LibSQLStore({
-			url: "file:./mastra.db",
+			url: "file:/tmp/mastra.db",
 		}),
 		options: {
 			lastMessages: 10,

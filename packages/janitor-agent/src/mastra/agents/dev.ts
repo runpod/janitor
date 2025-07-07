@@ -10,9 +10,9 @@ import {
 	move_file,
 	read_file,
 	search,
-} from "../tools/file-system-tools";
-import { createBasicMemory } from "../utils/memory";
-import { getModel } from "../utils/models";
+} from "../tools/file-system-tools.js";
+import { createBasicMemory } from "../utils/memory.js";
+import { getModel } from "../utils/models.js";
 
 // Load environment variables
 dotenv.config({ path: ".env" });
