@@ -12,37 +12,102 @@ This monorepo contains an AI agent system that automatically maintains, validate
 
 Main AI agent system using [Mastra](https://mastra.ai) with multi-agent architecture:
 
--   **Janitor Agent** - Orchestrates validation, repair, and feature addition
--   **Dev Agent** - Diagnoses issues and implements fixes
--   **PR Creator Agent** - Creates GitHub pull requests
+- **Janitor Agent** - Orchestrates validation, repair, and feature addition
+- **Dev Agent** - Diagnoses issues and implements fixes
+- **PR Creator Agent** - Creates GitHub pull requests
 
 ### [`infra/`](infra/)
 
 AWS infrastructure for running agents on disposable GPU instances:
 
--   Terraform configurations for EC2, S3, CloudWatch
--   Packer scripts for custom AMIs
--   Bootstrap and deployment automation
+- Terraform configurations for EC2, S3, CloudWatch
+- Packer scripts for custom AMIs
+- Bootstrap and deployment automation
 
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
 
--   [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with appropriate permissions
--   [Docker](https://docs.docker.com/get-docker/) for local development
--   [Make](https://chocolatey.org/packages/make) for workflow commands (Windows: `choco install make`)
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+- [Docker](https://docs.docker.com/get-docker/) for local development
+- [Make](https://chocolatey.org/packages/make) for workflow commands (Windows: `choco install make`)
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) (v1.0+)
 
-### 2. Environment Setup
+### 2. AWS Account Setup (One-time)
+
+> [!IMPORTANT]  
+> **First-time AWS setup required!** If you don't have AWS configured, follow these steps:
+
+#### A. Create AWS Account
+
+1. Sign up at [aws.amazon.com](https://aws.amazon.com) if you don't have an account
+
+#### B. Create IAM User for CLI Access
+
+1. Log into [AWS Console](https://console.aws.amazon.com/iam/)
+2. Go to **IAM** → **Users** → **Add User**
+3. **User name**: `janitor-user`
+4. **Access type**: ✅ Programmatic access (API/CLI)
+5. **Permissions**: Attach these policies directly:
+    - `AmazonEC2FullAccess`
+    - `AmazonS3FullAccess`
+    - `CloudWatchFullAccess`
+    - `AmazonEC2ContainerRegistryFullAccess`
+    - `AmazonSSMFullAccess`
+    - `AmazonDynamoDBFullAccess`
+    - `IAMFullAccess`
+6. **Save the Access Key ID and Secret Key** (you'll only see these once!)
+
+#### C. Configure AWS CLI
 
 ```bash
-# Copy the example environment file and edit it
+# Configure AWS profile for janitor
+aws configure --profile janitor
+# Enter your Access Key ID and Secret Access Key
+# Region: eu-west-2 (or your preferred region)
+# Output format: json
+```
+
+### 3. Environment Setup
+
+```bash
+# Copy the example environment file
 cp .env.example .env
 ```
 
-> [!NOTE]  
-> Edit the `.env` file with your actual AWS profile, account ID, and API keys. The `.env.example` file includes helpful comments and links for obtaining API keys.
+**Edit `.env` with your values:**
 
-### 3. Deploy Infrastructure (One-time Setup)
+```bash
+# AWS Configuration
+AWS_PROFILE=janitor                    # Profile name from step 2C
+AWS_REGION=eu-west-2                   # Your AWS region
+ACCOUNT_ID=YOUR_AWS_ACCOUNT_ID         # Get with: aws sts get-caller-identity --profile janitor
+
+# API Keys (Required)
+ANTHROPIC_API_KEY=your-key-here        # Get from: https://console.anthropic.com/settings/keys
+GITHUB_PERSONAL_ACCESS_TOKEN=your-token # Get from: https://github.com/settings/tokens (needs 'repo' scope)
+```
+
+> [!NOTE]  
+> **Get your Account ID**: Run `aws sts get-caller-identity --profile janitor --query Account --output text`
+
+### 4. Set Up Remote State Backend (One-time, Team Setup)
+
+> [!NOTE]  
+> **Skip this step** if you're working solo. For team collaboration, this creates shared Terraform state.
+
+```bash
+# Create S3 + DynamoDB for remote state (one-time bootstrap)
+cd infra/terraform-backend
+terraform init
+terraform apply
+
+# Add backend configuration to main terraform
+cd ../terraform
+# This creates backend.tf with S3 configuration
+```
+
+### 5. Deploy Infrastructure (One-time Setup)
 
 ```bash
 # Initialize and deploy AWS infrastructure
@@ -60,7 +125,7 @@ make image ENV=dev
 > 1. **First time setup** (after deploying infrastructure)
 > 2. **After changing Janitor agent code** in `packages/janitor-agent/`
 
-### 4. Run Janitor Validation (Daily Usage)
+### 6. Run Janitor Validation (Daily Usage)
 
 ```bash
 # Launch instance and run validation
@@ -76,7 +141,7 @@ make kill-instances ENV=dev       # Terminate instances
 > [!TIP]
 > Always run `make kill-instances ENV=dev` after getting your reports to avoid unnecessary AWS costs. Instances are designed to be disposable!
 
-### 5. Local Development
+### 7. Local Development
 
 ```bash
 # Work with the agent locally
@@ -99,9 +164,9 @@ When using AI coding assistants, **always** provide this context:
 
 ### Key Documentation
 
--   **[`docs/conventions.md`](docs/conventions.md)** - for all development work
--   **[`packages/janitor-agent/README.md`](packages/janitor-agent/README.md)** - Detailed agent development guide
--   **[`infra/README.md`](infra/README.md)** - AWS infrastructure setup and deployment
+- **[`docs/conventions.md`](docs/conventions.md)** - for all development work
+- **[`packages/janitor-agent/README.md`](packages/janitor-agent/README.md)** - Detailed agent development guide
+- **[`infra/README.md`](infra/README.md)** - AWS infrastructure setup and deployment
 
 ## 🎯 Common Operations
 
@@ -157,11 +222,11 @@ ls -la /opt/janitor/
 
 ## 🏆 User Stories
 
--   ✅ Repository Validation - Automated Docker validation
--   ✅ File System Operations - Cross-platform file handling
--   ✅ Pull Request Creation - Automated GitHub PRs
--   ✅ Feature Addition - Standardized repository enhancements
--   ✅ AWS Cloud Runner - Disposable GPU instances for scale
+- ✅ Repository Validation - Automated Docker validation
+- ✅ File System Operations - Cross-platform file handling
+- ✅ Pull Request Creation - Automated GitHub PRs
+- ✅ Feature Addition - Standardized repository enhancements
+- ✅ AWS Cloud Runner - Disposable GPU instances for scale
 
 ## 📄 License
 
