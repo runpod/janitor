@@ -6,11 +6,6 @@ As a repository maintainer, I want to add standardized features to repositories 
 agent system, so that I can efficiently implement consistent infrastructure and functionality across
 multiple worker repositories.
 
-## Epic
-
-This user story is part of the "RunPod Worker Repository Auto Maintenance" epic, which aims to
-create automated tools for maintaining and validating RunPod worker repositories.
-
 ## Description
 
 Extend the existing system to:
@@ -27,55 +22,55 @@ Extend the existing system to:
 
 The feature addition capabilities should support:
 
-- Adding standardized files to specific folders in the repository
-- Creating necessary directories if they don't exist
-- Modifying existing files (like adding badges to README files)
-- Customizing configuration files based on repository-specific parameters
+-   Adding standardized files to specific folders in the repository
+-   Creating necessary directories if they don't exist
+-   Modifying existing files (like adding badges to README files)
+-   Customizing configuration files based on repository-specific parameters
 
 ## Acceptance Criteria
 
-- Users can request the Janitor to add features to a repository through natural language commands
-- The system supports specific feature requests like "prepare the repo for the hub" which adds
-  RunPod Hub support
-- The Dev agent has the capability to create directories, create new files, and modify existing
-  files
-- The system can interpret structured content specifications in the user's request (like JSON
-  examples)
-- The Janitor coordinates the entire feature addition process:
-    - Repository checkout
-    - Feature implementation through the Dev agent
-    - Validation to ensure the repository still works
-    - PR creation through the PR Creator agent
-- The feature addition process produces a report detailing:
-    - What files were added or modified
-    - What directories were created
-    - What changes were made to existing files
-    - Any issues encountered
-- The existing validation workflow continues to function properly
-- The system gracefully handles errors during the feature addition process
+-   Users can request the Janitor to add features to a repository through natural language commands
+-   The system supports specific feature requests like "prepare the repo for the hub" which adds
+    RunPod Hub support
+-   The Dev agent has the capability to create directories, create new files, and modify existing
+    files
+-   The system can interpret structured content specifications in the user's request (like JSON
+    examples)
+-   The Janitor coordinates the entire feature addition process:
+    -   Repository checkout
+    -   Feature implementation through the Dev agent
+    -   Validation to ensure the repository still works
+    -   PR creation through the PR Creator agent
+-   The feature addition process produces a report detailing:
+    -   What files were added or modified
+    -   What directories were created
+    -   What changes were made to existing files
+    -   Any issues encountered
+-   The existing validation workflow continues to function properly
+-   The system gracefully handles errors during the feature addition process
 
 ## Technical Notes
 
-- Implement general-purpose file system tools that can be used for multiple purposes. Specifically:
-    - A tool to create directories (`create_directory`) is needed for features requiring new folders
-      (like `.runpod`).
-    - Existing tools `read_file` and `edit_file` will be used for file operations.
-    - **Modification Strategy**: To modify existing files (e.g., adding a badge to a README), the
-      Dev agent will be responsible for:
+-   Implement general-purpose file system tools that can be used for multiple purposes. Specifically:
+    -   A tool to create directories (`create_directory`) is needed for features requiring new folders
+        (like `.runpod`).
+    -   Existing tools `read_file` and `edit_file` will be used for file operations.
+    -   **Modification Strategy**: To modify existing files (e.g., adding a badge to a README), the
+        Dev agent will be responsible for:
         1. Reading the file content using `read_file`.
         2. Identifying the insertion/modification point within the content.
         3. Constructing the new, complete file content with the changes applied.
         4. Writing the entire new content back using `edit_file` (overwriting the original). This
            approach relies on the agent's capability rather than a specialized file modification
            tool.
-- Follow existing project conventions for tool implementation and agent communication
-- Maintain the current agent structure:
-    - Janitor as the orchestrator
-    - Dev for technical operations
-    - PR Creator for GitHub interactions
-- Extend agent instructions to recognize feature addition commands
-- Implement appropriate error handling and reporting
-- Create tests that verify the feature addition functionality
+-   Follow existing project conventions for tool implementation and agent communication
+-   Maintain the current agent structure:
+    -   Janitor as the orchestrator
+    -   Dev for technical operations
+    -   PR Creator for GitHub interactions
+-   Extend agent instructions to recognize feature addition commands
+-   Implement appropriate error handling and reporting
+-   Create tests that verify the feature addition functionality
 
 ## Feature Example: Hub Preparation
 
