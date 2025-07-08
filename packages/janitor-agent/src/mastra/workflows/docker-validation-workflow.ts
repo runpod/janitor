@@ -80,8 +80,19 @@ const dockerBuildStep = createStep({
 			const defaultImageName = `${repoName.toLowerCase()}-${Date.now()}`;
 			const imageName = inputData.imageName || defaultImageName;
 
-			// Use default platform if not provided
-			const platform = inputData.platform || "linux/amd64";
+			// Use default platform if not provided (with auto-detection for local development)
+			let platform = inputData.platform;
+			if (!platform) {
+				// Auto-detect platform for local development on Apple Silicon
+				const arch = process.arch;
+				if (arch === "arm64") {
+					platform = "linux/arm64";
+					console.log(`🍎 Auto-detected Apple Silicon - using platform: ${platform}`);
+				} else {
+					platform = "linux/amd64";
+					console.log(`🖥️  Auto-detected Intel/AMD - using platform: ${platform}`);
+				}
+			}
 
 			// Build the Docker image
 			const buildResult = await buildDockerImage(dockerfilePath, imageName, platform);

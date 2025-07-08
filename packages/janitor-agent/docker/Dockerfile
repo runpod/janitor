@@ -36,10 +36,11 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 
-# Copy Docker scripts
+# Copy Docker scripts and database operations
 COPY docker/entrypoint.sh /app/entrypoint.sh
 COPY docker/run-janitor.js /app/run-janitor.js
 COPY docker/health-server.js /app/health-server.js
+COPY src/db-operations.js /app/db-operations.js
 
 # Make scripts executable
 RUN chmod +x /app/entrypoint.sh

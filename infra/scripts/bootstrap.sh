@@ -8,7 +8,6 @@ set -euo pipefail
 REGION="${region}"
 ENVIRONMENT="${environment}"
 ECR_REPOSITORY="${ecr_repository}"
-S3_BUCKET="${s3_bucket}"
 LOG_GROUP="${log_group}"
 ACCOUNT_ID="${account_id}"
 
@@ -143,9 +142,6 @@ config:
     # Whether to create pull requests for fixes
     create_pull_requests: true
 
-    # S3 prefix for storing reports
-    report_prefix: "reports"
-
     # Log level (debug, info, warn, error)
     log_level: "info"
 EOF
@@ -176,7 +172,6 @@ set -euo pipefail
 REGION="${region}"
 ENVIRONMENT="${environment}"
 ECR_REPOSITORY="${ecr_repository}"
-S3_BUCKET="${s3_bucket}"
 LOG_GROUP="${log_group}"
 ACCOUNT_ID="${account_id}"
 
@@ -230,51 +225,21 @@ docker run --rm \
     -v /home/ec2-user/.aws:/root/.aws:ro \
     -e AWS_REGION=$REGION \
     -e AWS_DEFAULT_REGION=$REGION \
-    -e S3_BUCKET=$S3_BUCKET \
     -e ENVIRONMENT=$ENVIRONMENT \
     -e REPOS_FILE=$REPOS_FILE \
     -e LOG_GROUP=$LOG_GROUP \
     -e ACCOUNT_ID=$ACCOUNT_ID \
     -e ANTHROPIC_API_KEY=${anthropic_api_key} \
     -e GITHUB_PERSONAL_ACCESS_TOKEN=${github_personal_access_token} \
+    -e DATABASE_AGENT_SECRET_ARN=${database_agent_secret_arn} \
+    -e DATABASE_QUERY_SECRET_ARN=${database_query_secret_arn} \
     $ECR_REPOSITORY:latest \
     main
 
-# Create a dummy report for testing
-log "Creating test report..."
-TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-REPORT_FILE="/tmp/janitor-report-$TIMESTAMP.json"
+# Validation results are now stored directly in PostgreSQL database
+log "INFO: Validation results stored in database"
 
-cat > $REPORT_FILE << REPORT_EOF
-{
-    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "environment": "$ENVIRONMENT",
-    "instance_id": "$(curl -s http://169.254.169.254/latest/meta-data/instance-id)",
-    "instance_type": "$(curl -s http://169.254.169.254/latest/meta-data/instance-type)",
-    "region": "$REGION",
-    "status": "success",
-    "message": "Bootstrap test completed successfully",
-    "docker_version": "$(docker --version)",
-    "gpu_available": $(command -v nvidia-smi >/dev/null 2>&1 && echo "true" || echo "false"),
-    "tests": {
-        "docker_hello_world": "passed",
-        "ecr_authentication": "passed",
-        "container_pull": "passed"
-    }
-}
-REPORT_EOF
-
-# Upload report to S3
-log "Uploading report to S3..."
-aws s3 cp $REPORT_FILE s3://$S3_BUCKET/reports/test-run-$TIMESTAMP.json
-log "SUCCESS: Report uploaded successfully"
-
-log "SUCCESS: Janitor test run completed successfully!"
-
-# Optional: Auto-shutdown after completion (uncomment for production)
-# log "Shutting down instance after completion..."
-# sleep 30
-# shutdown -h now
+log "SUCCESS: Janitor validation run completed successfully!"
 EOF
 
 # Make scripts executable

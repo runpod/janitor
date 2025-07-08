@@ -6,12 +6,12 @@
 
 The AWS infrastructure creates:
 
--   **EC2 Launch Templates**: Pre-configured instance templates for reproducible deployments
--   **ECR Repository**: Container registry for Janitor Docker images
--   **S3 Bucket**: Storage for execution reports and artifacts
--   **IAM Roles**: Least-privilege permissions for instance operations
--   **CloudWatch Logs**: Centralized logging and monitoring
--   **Custom AMI** (optional): GPU-optimized AMI with pre-installed dependencies
+- **EC2 Launch Templates**: Pre-configured instance templates for reproducible deployments
+- **ECR Repository**: Container registry for Janitor Docker images
+- **RDS PostgreSQL Database**: Persistent storage for validation results and reports
+- **IAM Roles**: Least-privilege permissions for instance operations
+- **CloudWatch Logs**: Centralized logging and monitoring
+- **Custom AMI** (optional): GPU-optimized AMI with pre-installed dependencies
 
 ## 📁 Directory Structure
 
@@ -38,16 +38,16 @@ Your AWS credentials need permissions for:
 
 **AWS Managed Policies (recommended):**
 
--   `PowerUserAccess` (for development)
+- `PowerUserAccess` (for development)
 
 **Or granular policies:**
 
--   `AmazonEC2FullAccess`
--   `IAMFullAccess`
--   `AmazonS3FullAccess`
--   `CloudWatchFullAccess`
--   `AmazonEC2ContainerRegistryFullAccess`
--   `AmazonSSMFullAccess`
+- `AmazonEC2FullAccess`
+- `IAMFullAccess`
+- `AmazonS3FullAccess`
+- `CloudWatchFullAccess`
+- `AmazonEC2ContainerRegistryFullAccess`
+- `AmazonSSMFullAccess`
 
 ### Repository Configuration
 
@@ -70,13 +70,13 @@ config:
 
 **Development** (`env/dev.tfvars`):
 
--   `t3.micro` instances (free tier eligible)
--   Basic logging and monitoring
+- `t3.micro` instances (free tier eligible)
+- Basic logging and monitoring
 
 **Production** (`env/prod.tfvars`):
 
--   `g5.xlarge` GPU instances (~$1/hour)
--   Enhanced monitoring and alerting
+- `g5.xlarge` GPU instances (~$1/hour)
+- Enhanced monitoring and alerting
 
 ## 🖥️ GPU Support
 
@@ -91,9 +91,9 @@ make build-ami
 
 This creates an AMI with:
 
--   NVIDIA drivers and CUDA
--   Docker with GPU support
--   Pre-installed Janitor dependencies
+- NVIDIA drivers and CUDA
+- Docker with GPU support
+- Pre-installed Janitor dependencies
 
 ### GPU Instance Configuration
 
@@ -116,11 +116,11 @@ make infra-apply ENV=prod
 
 All instance activity is logged to CloudWatch:
 
--   **Log Group**: `/janitor-runner`
--   **Streams**:
-    -   `{instance-id}/bootstrap` - Instance initialization
-    -   `{instance-id}/janitor-run` - Janitor execution
-    -   `{instance-id}/docker` - Docker container logs
+- **Log Group**: `/janitor-runner`
+- **Streams**:
+    - `{instance-id}/bootstrap` - Instance initialization
+    - `{instance-id}/janitor-run` - Janitor execution
+    - `{instance-id}/docker` - Docker container logs
 
 ### SSH Access (for debugging)
 
@@ -140,23 +140,26 @@ sudo tail -f /var/log/janitor-runner.log
 
 ### Execution Reports
 
-Reports are automatically uploaded to S3 and can be downloaded with:
+Validation results are automatically stored in PostgreSQL database and can be queried with:
 
 ```bash
-make fetch-report ENV=dev
+make query-runs ENV=dev           # List recent validation runs
+make query-db ENV=dev REPO=name   # Query specific repository results
+make db-connect ENV=dev           # Connect to database directly
+make validation-details ENV=dev   # Show complete validation details
 ```
 
 ## 💰 Cost Management
 
 ### Development Environment
 
--   **Instance**: `t3.micro` (free tier eligible)
--   **Expected cost**: $0-2/day when idle
+- **Instance**: `t3.micro` (free tier eligible)
+- **Expected cost**: $0-2/day when idle
 
 ### Production Environment
 
--   **Instance**: `g5.xlarge` GPU instance (~$1/hour)
--   **Auto-shutdown**: Instances terminate after job completion
+- **Instance**: `g5.xlarge` GPU instance (~$1/hour)
+- **Auto-shutdown**: Instances terminate after job completion
 
 ### Cost Optimization
 
@@ -208,14 +211,14 @@ aws s3 rm s3://bucket-name --recursive && aws s3 rb s3://bucket-name
 
 ### IAM Configuration
 
--   Instances use least-privilege IAM roles
--   Permissions limited to ECR, S3, CloudWatch, SSM
+- Instances use least-privilege IAM roles
+- Permissions limited to ECR, S3, CloudWatch, SSM
 
 ### Network Security
 
--   Minimal inbound access (SSH optional)
--   Uses default VPC (customize for production)
--   Security groups with restricted access
+- Minimal inbound access (SSH optional)
+- Uses default VPC (customize for production)
+- Security groups with restricted access
 
 ### Operational Security
 
@@ -230,18 +233,18 @@ aws s3 rm s3://bucket-name --recursive && aws s3 rb s3://bucket-name
 
 **Terraform fails with permission errors:**
 
--   Verify AWS credentials have required IAM policies
--   Check AWS profile configuration
+- Verify AWS credentials have required IAM policies
+- Check AWS profile configuration
 
 **Instance fails to start:**
 
--   Check CloudWatch logs for bootstrap errors
--   Verify AMI availability in your region
+- Check CloudWatch logs for bootstrap errors
+- Verify AMI availability in your region
 
 **Reports not uploading:**
 
--   Verify IAM permissions for S3
--   Check CloudWatch logs for error details
+- Verify IAM permissions for S3
+- Check CloudWatch logs for error details
 
 ### Debugging Steps
 

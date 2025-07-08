@@ -4,10 +4,6 @@
 
 As a Janitor maintainer, I want validation reports stored in a centralized database instead of individual files, so that I can query validation status for specific repositories, track historical results across multiple maintenance runs, and build reporting dashboards on top of structured data.
 
-## Epic
-
-This user story is part of the "RunPod Worker Repository Auto Maintenance" epic, which aims to create automated tools for maintaining and validating RunPod worker repositories.
-
 ## Description
 
 Replace the current file-based reporting system with a centralized database solution:
@@ -22,44 +18,44 @@ Replace the current file-based reporting system with a centralized database solu
 
 The database-based reporting should support:
 
--   Storing validation results for multiple repositories per run
--   Tracking historical validation status across multiple maintenance cycles
--   Querying validation status for specific repositories
--   Storing detailed error information and remediation steps
--   Supporting both validation-only and feature-addition operations
--   Scalable schema design for growing repository lists
+- Storing validation results for multiple repositories per run
+- Tracking historical validation status across multiple maintenance cycles
+- Querying validation status for specific repositories
+- Storing detailed error information and remediation steps
+- Supporting both validation-only and feature-addition operations
+- Scalable schema design for growing repository lists
 
 ## Acceptance Criteria
 
--   AWS Aurora Serverless v2 (PostgreSQL) database is provisioned via Terraform in the infrastructure
--   Database includes proper schema for validation runs, repository results, and detailed reports
--   The Janitor agent stores all validation results directly to the database instead of generating JSON files
--   Users can query validation status for specific repositories using database query commands
--   The system stores the following data for each validation run:
-    -   Run metadata: timestamp, instance ID, environment, repository list
-    -   Repository-level results: validation status, build success, container execution results
-    -   Detailed reports: error logs, remediation steps, performance metrics
-    -   Feature addition results: added files, modified content, PR links
--   The `make fetch-report ENV=dev` command is replaced with `make query-db ENV=dev REPO=repo-name` for specific repository status
--   A new `make query-runs ENV=dev` command shows recent validation runs and their overall status
--   Database includes proper indexes for efficient querying by repository name, timestamp, and validation status
--   The system handles database connection failures gracefully and retries operations
--   Database credentials are managed securely through AWS Secrets Manager
--   **Agent has minimal database permissions**: only INSERT/UPDATE operations on specific tables, no administrative rights
--   Query operations use separate read-only credentials for security isolation
--   CloudWatch logging continues to capture operational logs while structured data goes to the database
--   Database schema supports future frontend integration with proper API-friendly structure
+- AWS Aurora Serverless v2 (PostgreSQL) database is provisioned via Terraform in the infrastructure
+- Database includes proper schema for validation runs, repository results, and detailed reports
+- The Janitor agent stores all validation results directly to the database instead of generating JSON files
+- Users can query validation status for specific repositories using database query commands
+- The system stores the following data for each validation run:
+    - Run metadata: timestamp, instance ID, environment, repository list
+    - Repository-level results: validation status, build success, container execution results
+    - Detailed reports: error logs, remediation steps, performance metrics
+    - Feature addition results: added files, modified content, PR links
+- The `make fetch-report ENV=dev` command is replaced with `make query-db ENV=dev REPO=repo-name` for specific repository status
+- A new `make query-runs ENV=dev` command shows recent validation runs and their overall status
+- Database includes proper indexes for efficient querying by repository name, timestamp, and validation status
+- The system handles database connection failures gracefully and retries operations
+- Database credentials are managed securely through AWS Secrets Manager
+- **Agent has minimal database permissions**: only INSERT/UPDATE operations on specific tables, no administrative rights
+- Query operations use separate read-only credentials for security isolation
+- CloudWatch logging continues to capture operational logs while structured data goes to the database
+- Database schema supports future frontend integration with proper API-friendly structure
 
 ## Technical Notes
 
--   **Database Infrastructure**:
+- **Database Infrastructure**:
 
-    -   Use Aurora Serverless v2 (PostgreSQL) for cost-effective, scalable database solution
-    -   Deploy in private subnets with proper VPC security groups
-    -   Use AWS Secrets Manager for database credential management
-    -   Implement automatic backups and point-in-time recovery
+    - Use Aurora Serverless v2 (PostgreSQL) for cost-effective, scalable database solution
+    - Deploy in private subnets with proper VPC security groups
+    - Use AWS Secrets Manager for database credential management
+    - Implement automatic backups and point-in-time recovery
 
--   **Database Schema Design**:
+- **Database Schema Design**:
 
     ```sql
     -- Validation runs table
@@ -110,22 +106,22 @@ The database-based reporting should support:
     CREATE INDEX idx_validation_runs_started_at ON validation_runs(started_at);
     ```
 
--   **Agent Integration**:
+- **Agent Integration**:
 
-    -   Create new database tools in `packages/janitor-agent/src/mastra/tools/database-tools.ts`
-    -   Implement connection pooling for efficient database access
-    -   Add database operations to the validation workflow
-    -   Remove S3 report upload functionality from bootstrap scripts
+    - Create new database tools in `packages/janitor-agent/src/mastra/tools/database-tools.ts`
+    - Implement connection pooling for efficient database access
+    - Add database operations to the validation workflow
+    - Remove S3 report upload functionality from bootstrap scripts
 
--   **Infrastructure Components**:
+- **Infrastructure Components**:
 
-    -   Terraform module for Aurora Serverless v2 cluster
-    -   VPC configuration with private subnets for database
-    -   Security groups allowing database access from EC2 instances
-    -   Secrets Manager integration for database credentials
-    -   IAM roles with database access permissions
+    - Terraform module for Aurora Serverless v2 cluster
+    - VPC configuration with private subnets for database
+    - Security groups allowing database access from EC2 instances
+    - Secrets Manager integration for database credentials
+    - IAM roles with database access permissions
 
--   **New Make Commands**:
+- **New Make Commands**:
 
     ```bash
     make query-db ENV=dev REPO=repo-name      # Query specific repository status
@@ -134,26 +130,26 @@ The database-based reporting should support:
     make db-migrate ENV=dev                   # Run database migrations
     ```
 
--   **Security Configuration**:
+- **Security Configuration**:
 
-    -   Database in private subnets, not publicly accessible
-    -   EC2 instances connect via VPC security groups
-    -   Database credentials stored in AWS Secrets Manager
-    -   **Agent-specific minimal database permissions**:
-        -   `INSERT` on `validation_runs`, `repository_validations`, `validation_reports` tables only
-        -   `UPDATE` on `validation_runs` table only (for completion status)
-        -   `SELECT` on `validation_runs` table only (for run_id validation)
-        -   NO permissions for `DROP`, `DELETE`, `ALTER`, or administrative functions
-    -   **Query command credentials** (separate from agent):
-        -   `SELECT` permissions on all tables for read-only operations
-        -   Used only by make commands (`query-db`, `query-runs`, `db-connect`)
-    -   Database encryption at rest and in transit
+    - Database in private subnets, not publicly accessible
+    - EC2 instances connect via VPC security groups
+    - Database credentials stored in AWS Secrets Manager
+    - **Agent-specific minimal database permissions**:
+        - `INSERT` on `validation_runs`, `repository_validations`, `validation_reports` tables only
+        - `UPDATE` on `validation_runs` table only (for completion status)
+        - `SELECT` on `validation_runs` table only (for run_id validation)
+        - NO permissions for `DROP`, `DELETE`, `ALTER`, or administrative functions
+    - **Query command credentials** (separate from agent):
+        - `SELECT` permissions on all tables for read-only operations
+        - Used only by make commands (`query-db`, `query-runs`, `db-connect`)
+    - Database encryption at rest and in transit
 
--   **Migration Strategy**:
-    -   Implement database tools alongside existing file-based system initially
-    -   Gradual migration of functionality from file-based to database storage
-    -   Keep CloudWatch operational logging unchanged
-    -   Remove S3 report functionality after database integration is validated
+- **Migration Strategy**:
+    - Implement database tools alongside existing file-based system initially
+    - Gradual migration of functionality from file-based to database storage
+    - Keep CloudWatch operational logging unchanged
+    - Remove S3 report functionality after database integration is validated
 
 ## Example Usage
 

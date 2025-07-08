@@ -6,6 +6,52 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') [JANITOR] $1"
 }
 
+# Function to fetch database credentials from AWS and set as environment variables
+setup_database_credentials() {
+    log "🔐 Setting up database credentials..."
+    
+    # If credentials are already set (for local development), use them
+    if [[ -n "${DATABASE_HOST:-}" && -n "${DATABASE_PASSWORD:-}" ]]; then
+        log "✅ Database credentials already provided via environment variables"
+        return 0
+    fi
+    
+    # For production, fetch from AWS Secrets Manager
+    if [[ -n "${DATABASE_AGENT_SECRET_ARN:-}" ]]; then
+        log "🔑 Fetching database credentials from AWS Secrets Manager..."
+        
+        local secret_json
+        
+        # Use AWS profile only for local development, not in production
+        local aws_profile_flag=""
+        if [[ "${ENVIRONMENT:-}" == "local" ]]; then
+            aws_profile_flag="--profile ${AWS_PROFILE:-janitor}"
+        fi
+        
+        secret_json=$(aws secretsmanager get-secret-value \
+            --secret-id "$DATABASE_AGENT_SECRET_ARN" \
+            --query "SecretString" \
+            --output text \
+            $aws_profile_flag 2>/dev/null) || {
+            log "⚠️  Failed to fetch database credentials from AWS, continuing without database"
+            return 1
+        }
+        
+        # Parse the secret JSON and export as environment variables
+        export DATABASE_HOST=$(echo "$secret_json" | jq -r '.host')
+        export DATABASE_PORT=$(echo "$secret_json" | jq -r '.port // "5432"')
+        export DATABASE_NAME=$(echo "$secret_json" | jq -r '.database')
+        export DATABASE_USER=$(echo "$secret_json" | jq -r '.username')
+        export DATABASE_PASSWORD=$(echo "$secret_json" | jq -r '.password')
+        
+        log "✅ Database credentials fetched and configured"
+        return 0
+    else
+        log "⚠️  No DATABASE_AGENT_SECRET_ARN provided, continuing without database"
+        return 1
+    fi
+}
+
 # Function to process repositories from YAML file
 process_repositories() {
     local repos_file="$1"
@@ -59,20 +105,63 @@ process_single_repository() {
     log "✅ Completed processing $repo_name"
 }
 
-# Function to upload reports to S3
-upload_reports() {
-    if [[ -n "${S3_BUCKET:-}" ]]; then
-        log "📤 Uploading reports to S3 bucket: $S3_BUCKET"
-        for report in /app/reports/*.json; do
-            if [[ -f "$report" ]]; then
-                local filename=$(basename "$report")
-                aws s3 cp "$report" "s3://$S3_BUCKET/reports/$filename" || log "⚠️  Failed to upload $report"
-            fi
-        done
-        log "✅ All reports uploaded"
-    else
-        log "ℹ️  No S3_BUCKET specified, skipping upload"
+# Function to store reports in database
+store_reports_in_database() {
+    if [[ -z "${RUN_ID:-}" ]]; then
+        log "⚠️  No RUN_ID available, skipping database storage"
+        return
     fi
+    
+    log "📊 Storing validation results in database..."
+    
+    for report in /app/reports/*.json; do
+        if [[ -f "$report" ]]; then
+            local filename=$(basename "$report")
+            local repo_name=$(echo "$filename" | sed 's/-report\.json$//' | sed 's/-error-report\.json$//')
+            
+            log "💾 Processing report for: $repo_name"
+            
+            # Parse the JSON report to extract results
+            local status=$(jq -r '.status // "unknown"' "$report")
+            local error_message=$(jq -r '.error // null' "$report")
+            local organization="runpod"  # Default organization
+            
+            # Determine validation status and success flags
+            local validation_status="failed"
+            local build_success="false"
+            local container_success="false"
+            
+            if [[ "$status" == "success" ]]; then
+                validation_status="success"
+                build_success="true"
+                container_success="true"
+            fi
+            
+            # Store in database
+            local validation_id=$(node /app/db-operations.js store-repo \
+                "$RUN_ID" \
+                "$repo_name" \
+                "$organization" \
+                "$validation_status" \
+                "docker_validation" \
+                "$build_success" \
+                "$container_success" \
+                "false" \
+                "false" \
+                "$error_message" \
+                "60" 2>/dev/null)
+            
+            if [[ -n "$validation_id" && "$validation_id" != "Database"* ]]; then
+                # Store the detailed report
+                node /app/db-operations.js store-report "$validation_id" "build_log" "$report" 2>/dev/null || true
+                log "✅ Stored results for $repo_name (ID: $validation_id)"
+            else
+                log "⚠️  Failed to store results for $repo_name"
+            fi
+        fi
+    done
+    
+    log "✅ All reports stored in database"
 }
 
 # Main execution
@@ -87,6 +176,28 @@ main() {
         exit 1
     fi
     
+    # Set up database credentials (fetched from AWS, not by the agent)
+    setup_database_credentials
+    
+    # Create validation run in database
+    if [[ -n "${REPOS_FILE:-}" ]] && [[ -f "$REPOS_FILE" ]]; then
+        local repo_count=$(grep -c '^[[:space:]]*url:' "$REPOS_FILE" || echo "0")
+        log "📊 Creating validation run for $repo_count repositories..."
+        
+        export RUN_ID=$(node /app/db-operations.js start-run \
+            "${ENVIRONMENT:-dev}" \
+            "${HOSTNAME:-unknown}" \
+            "$repo_count" \
+            "$REPOS_FILE" 2>/dev/null)
+        
+        if [[ -n "$RUN_ID" && "$RUN_ID" != "Database"* ]]; then
+            log "✅ Created validation run: $RUN_ID"
+        else
+            log "⚠️  Failed to create validation run, continuing without database storage"
+            export RUN_ID=""
+        fi
+    fi
+    
     # Process repositories
     if [[ -n "${REPOS_FILE:-}" ]] && [[ -f "$REPOS_FILE" ]]; then
         process_repositories "$REPOS_FILE"
@@ -95,8 +206,14 @@ main() {
         exit 1
     fi
     
-    # Upload reports
-    upload_reports
+    # Store reports in database
+    store_reports_in_database
+    
+    # Mark validation run as complete
+    if [[ -n "${RUN_ID:-}" ]]; then
+        node /app/db-operations.js complete-run "$RUN_ID" "completed" 2>/dev/null || true
+        log "📊 Marked validation run as completed"
+    fi
     
     log "🎉 Janitor Agent execution completed successfully"
 }

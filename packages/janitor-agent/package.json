@@ -36,10 +36,12 @@
     "fastmcp": "^1.20.5",
     "glob": "^11.0.1",
     "mastra": "^0.10.9",
+    "pg": "^8.11.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
+    "@types/pg": "^8.10.9",
     "eslint": "latest",
     "eslint-config-next": "latest",
     "eslint-config-prettier": "^9.1.0",

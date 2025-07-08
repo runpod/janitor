@@ -81,7 +81,6 @@ function spawnWithLogs(
 
 		const childProcess = spawn(command, args, {
 			cwd,
-			shell: true,
 			stdio: "pipe",
 		});
 

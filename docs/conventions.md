@@ -29,23 +29,23 @@ janitor/
 
 **`packages/janitor-agent/`**
 
--   Contains the Mastra-based agent system
--   Docker repository validation logic
--   GPU-aware container testing
--   Local development and testing tools
+- Contains the Mastra-based agent system
+- Docker repository validation logic
+- GPU-aware container testing
+- Local development and testing tools
 
 **`infra/`**
 
--   Terraform configurations for AWS infrastructure
--   Packer scripts for building custom AMIs
--   Bootstrap and deployment scripts
--   Environment-specific configurations
+- Terraform configurations for AWS infrastructure
+- Packer scripts for building custom AMIs
+- Bootstrap and deployment scripts
+- Environment-specific configurations
 
 **Root Level**
 
--   `Makefile`: Primary interface for all operations
--   `scripts/`: Cross-cutting deployment utilities
--   Configuration files and documentation
+- `Makefile`: Primary interface for all operations
+- `scripts/`: Cross-cutting deployment utilities
+- Configuration files and documentation
 
 ## Environment Setup
 
@@ -69,11 +69,11 @@ SSH_KEY_PATH=~/.ssh/janitor-key
 
 ### Prerequisites
 
--   AWS CLI configured with appropriate permissions
--   Node.js and npm/pnpm installed
--   Terraform installed
--   Docker installed (for local testing)
--   SSH key pair for AWS instances
+- AWS CLI configured with appropriate permissions
+- Node.js and npm/pnpm installed
+- Terraform installed
+- Docker installed (for local testing)
+- SSH key pair for AWS instances
 
 ## Deployment and Operations
 
@@ -92,7 +92,12 @@ make ssh-info ENV=dev          # Show SSH connection details
 # Monitoring and Logs
 make logs ENV=dev              # Dump all logs and exit
 make logs-all ENV=dev          # Follow logs in real-time
-make fetch-report ENV=dev      # Get validation reports
+
+# Database Operations
+make query-runs ENV=dev        # List recent validation runs
+make query-db ENV=dev REPO=name # Query specific repository results
+make db-connect ENV=dev        # Connect to database directly
+make validation-details ENV=dev # Show complete validation details
 
 # Development
 make build                     # Build Docker image locally
@@ -103,17 +108,17 @@ make test-local                # Run local tests
 
 **Development (`ENV=dev`)**
 
--   Uses `infra/terraform/env/dev.tfvars`
--   t3.micro instances (no GPU)
--   CloudWatch logging enabled
--   Temporary instances for testing
+- Uses `infra/terraform/env/dev.tfvars`
+- t3.micro instances (no GPU)
+- CloudWatch logging enabled
+- Temporary instances for testing
 
 **Production (`ENV=prod`)**
 
--   Uses `infra/terraform/env/prod.tfvars`
--   GPU-enabled instances
--   Enhanced monitoring and alerting
--   Persistent infrastructure
+- Uses `infra/terraform/env/prod.tfvars`
+- GPU-enabled instances
+- Enhanced monitoring and alerting
+- Persistent infrastructure
 
 ### Complete Deployment Workflow
 
@@ -124,8 +129,8 @@ make launch-instance ENV=dev
 # 2. Monitor logs (real-time)
 make logs-all ENV=dev
 
-# 3. Get validation reports when ready
-make fetch-report ENV=dev
+# 3. Get validation results when ready
+make query-runs ENV=dev
 
 # 4. Clean up
 make kill-instances ENV=dev
@@ -137,20 +142,20 @@ make kill-instances ENV=dev
 
 **Janitor Agent (`packages/janitor-agent/src/mastra/agents/janitor.ts`)**
 
--   Main orchestration agent
--   Coordinates validation workflow
--   Makes decisions about repository handling
+- Main orchestration agent
+- Coordinates validation workflow
+- Makes decisions about repository handling
 
 **PR Creator Agent (`packages/janitor-agent/src/mastra/agents/pr-creator.ts`)**
 
--   Creates pull requests with fixes
--   Handles GitHub API interactions
--   Manages PR content and formatting
+- Creates pull requests with fixes
+- Handles GitHub API interactions
+- Manages PR content and formatting
 
 **Development Agent (`packages/janitor-agent/src/mastra/agents/dev.ts`)**
 
--   Development and testing utilities
--   Local validation workflows
+- Development and testing utilities
+- Local validation workflows
 
 ### Tool Implementation Patterns
 
@@ -188,25 +193,25 @@ export const dockerBuildTool = createTool({
 
 **Git Tools (`git-tools.ts`)**
 
--   Repository checkout with organization fallback
--   Auto-retry with "runpod-workers" fallback organization
--   Timeout controls and error handling
+- Repository checkout with organization fallback
+- Auto-retry with "runpod-workers" fallback organization
+- Timeout controls and error handling
 
 **Docker Tools (`docker-tools.ts`)**
 
--   GPU-aware container execution
--   Cross-platform Dockerfile detection
--   Build and validation operations
+- GPU-aware container execution
+- Cross-platform Dockerfile detection
+- Build and validation operations
 
 **File System Tools (`file-system-tools.ts`)**
 
--   Cross-platform file operations
--   Repository scanning and analysis
+- Cross-platform file operations
+- Repository scanning and analysis
 
 **Pull Request Tools (`pull-request.ts`)**
 
--   GitHub API integration via MCP
--   PR creation and management
+- GitHub API integration via MCP
+- PR creation and management
 
 ## GPU-Aware Validation System
 
@@ -241,18 +246,18 @@ const isCudaDockerfile = (dockerfileContent) => {
 
 **Non-CUDA Images (any instance):**
 
--   Full validation: build + run + logs collection
--   Complete container testing
+- Full validation: build + run + logs collection
+- Complete container testing
 
 **CUDA Images + No GPU Available:**
 
--   Build-only validation with clear messaging
--   Skip container execution to avoid GPU errors
+- Build-only validation with clear messaging
+- Skip container execution to avoid GPU errors
 
 **CUDA Images + GPU Available:**
 
--   Full validation including container execution
--   GPU-accelerated testing
+- Full validation including container execution
+- GPU-accelerated testing
 
 ### Docker Command Adaptation
 
@@ -271,21 +276,28 @@ const runDockerContainer = (imageTag, hasGpu, isCudaImage) => {
 
 **EC2 Instances:**
 
--   Development: t3.micro (no GPU)
--   Production: GPU-enabled instances (p3, g4dn series)
--   Custom AMIs with pre-installed dependencies
+- Development: t3.micro (no GPU)
+- Production: GPU-enabled instances (p3, g4dn series)
+- Custom AMIs with pre-installed dependencies
 
 **CloudWatch Logging:**
 
--   Log group: `/janitor-runner`
--   Instance-specific log streams
--   Real-time log streaming support
+- Log group: `/janitor-runner`
+- Instance-specific log streams
+- Real-time log streaming support
 
 **VPC and Security:**
 
--   Public subnets for simplicity
--   Security groups allowing SSH and HTTP/HTTPS
--   Instance profiles with CloudWatch permissions
+- Public subnets for simplicity
+- Security groups allowing SSH and HTTP/HTTPS
+- Instance profiles with CloudWatch permissions
+
+**Database Integration:**
+
+- PostgreSQL database for validation results and reports
+- Automatic schema migration and management
+- Real-time query capabilities for monitoring
+- Database credentials managed via AWS Secrets Manager
 
 ### Terraform Structure
 
@@ -324,9 +336,9 @@ make logs-all ENV=dev
 
 **Log Filtering:**
 
--   Automatically filters by current instance ID
--   Handles cases where log streams don't exist yet
--   Windows Git Bash compatible (`MSYS_NO_PATHCONV=1`)
+- Automatically filters by current instance ID
+- Handles cases where log streams don't exist yet
+- Windows Git Bash compatible (`MSYS_NO_PATHCONV=1`)
 
 **Log Access Patterns:**
 
@@ -350,8 +362,10 @@ make ssh-info ENV=dev
 # SSH into instance for debugging
 make ssh ENV=dev
 
-# Fetch validation reports
-make fetch-report ENV=dev
+# Database operations
+make query-runs ENV=dev        # List recent validation runs
+make query-db ENV=dev REPO=name # Query specific repository results
+make db-connect ENV=dev        # Connect to database directly
 ```
 
 ## Development Workflow
@@ -413,15 +427,15 @@ const result = await start({ triggerData: { repository: "test-repo" } });
 
 **File Operations:**
 
--   Windows: Manual directory scanning for Dockerfiles
--   Linux: Use `find` command with fallback to manual scanning
--   Platform detection: `process.platform === 'win32'`
+- Windows: Manual directory scanning for Dockerfiles
+- Linux: Use `find` command with fallback to manual scanning
+- Platform detection: `process.platform === 'win32'`
 
 **Command Execution:**
 
--   Use `shell: true` for cross-platform compatibility
--   Handle Windows path separators properly
--   Include `windowsHide: true` for clean output
+- Use `shell: true` for cross-platform compatibility
+- Handle Windows path separators properly
+- Include `windowsHide: true` for clean output
 
 ## Error Handling Patterns
 
@@ -483,23 +497,23 @@ return {
 
 ### API Key Management
 
--   Store all secrets in `.env` file
--   Never commit API keys to version control
--   Use environment-specific configurations
--   Validate key presence before operations
+- Store all secrets in `.env` file
+- Never commit API keys to version control
+- Use environment-specific configurations
+- Validate key presence before operations
 
 ### AWS Security
 
--   Use least-privilege IAM policies
--   Terminate instances after use
--   Monitor CloudWatch costs
--   Use instance profiles, not hardcoded credentials
+- Use least-privilege IAM policies
+- Terminate instances after use
+- Monitor CloudWatch costs
+- Use instance profiles, not hardcoded credentials
 
 ### GitHub Integration
 
--   Use personal access tokens with minimum required scopes
--   Configure tokens for repository access only
--   Store tokens securely in environment variables
+- Use personal access tokens with minimum required scopes
+- Configure tokens for repository access only
+- Store tokens securely in environment variables
 
 ## Common Issues and Solutions
 
@@ -531,24 +545,24 @@ return {
 
 ### Infrastructure
 
--   Auto-scaling based on workload
--   Multi-region deployment support
--   Cost optimization strategies
--   Enhanced monitoring and alerting
+- Auto-scaling based on workload
+- Multi-region deployment support
+- Cost optimization strategies
+- Enhanced monitoring and alerting
 
 ### Agent Capabilities
 
--   Support for more repository types
--   Enhanced error analysis and fixing
--   Integration with more CI/CD systems
--   Automated PR review and merging
+- Support for more repository types
+- Enhanced error analysis and fixing
+- Integration with more CI/CD systems
+- Automated PR review and merging
 
 ### Developer Experience
 
--   Local development with GPU simulation
--   Better debugging tools and interfaces
--   Automated testing pipelines
--   Performance monitoring and optimization
+- Local development with GPU simulation
+- Better debugging tools and interfaces
+- Automated testing pipelines
+- Performance monitoring and optimization
 
 ## Conclusion
 

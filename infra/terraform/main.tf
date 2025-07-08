@@ -275,20 +275,22 @@ locals {
     region           = var.region
     environment      = var.environment
     ecr_repository   = aws_ecr_repository.janitor.repository_url
-    s3_bucket        = aws_s3_bucket.reports.bucket
     log_group        = aws_cloudwatch_log_group.janitor_runner.name
     account_id       = var.account_id
     anthropic_api_key = var.anthropic_api_key
     github_personal_access_token = var.github_personal_access_token
+    database_agent_secret_arn = aws_secretsmanager_secret.db_agent_credentials.arn
+    database_query_secret_arn = aws_secretsmanager_secret.db_query_credentials.arn
     # Add uppercase versions for the HERE documents in bootstrap.sh
     REGION           = var.region
     ENVIRONMENT      = var.environment
     ECR_REPOSITORY   = aws_ecr_repository.janitor.repository_url
-    S3_BUCKET        = aws_s3_bucket.reports.bucket
     LOG_GROUP        = aws_cloudwatch_log_group.janitor_runner.name
     ACCOUNT_ID       = var.account_id
     ANTHROPIC_API_KEY = var.anthropic_api_key
     GITHUB_PERSONAL_ACCESS_TOKEN = var.github_personal_access_token
+    DATABASE_AGENT_SECRET_ARN = aws_secretsmanager_secret.db_agent_credentials.arn
+    DATABASE_QUERY_SECRET_ARN = aws_secretsmanager_secret.db_query_credentials.arn
   }))
 }
 

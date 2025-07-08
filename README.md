@@ -125,7 +125,26 @@ make image ENV=dev
 > 1. **First time setup** (after deploying infrastructure)
 > 2. **After changing Janitor agent code** in `packages/janitor-agent/`
 
-### 6. Run Janitor Validation (Daily Usage)
+### 6. Set Up SSH Access (One-time)
+
+> [!IMPORTANT]  
+> **Required for SSH access!** Set up your SSH key before you can connect to instances.
+
+```bash
+# Create and sync SSH key with AWS (required for SSH access)
+make setup-ssh-key ENV=dev
+```
+
+This command will:
+
+- Create `~/.ssh/janitor-key` if it doesn't exist
+- **Replace** the AWS key with your current local key
+- Show fingerprints to confirm the sync
+
+> [!NOTE]  
+> **Switching computers?** Run `make setup-ssh-key ENV=dev` on your new machine, then launch a fresh instance. Existing instances keep their original keys.
+
+### 7. Run Janitor Validation (Daily Usage)
 
 ```bash
 # Launch instance and run validation
@@ -134,20 +153,46 @@ make status ENV=dev               # Check instance status
 make logs ENV=dev                 # Monitor execution logs
 
 # Get results and clean up
-make fetch-report ENV=dev         # Download validation reports
+make query-runs ENV=dev           # List recent validation runs
+make query-db ENV=dev REPO=name   # Query specific repository results
 make kill-instances ENV=dev       # Terminate instances
 ```
 
 > [!TIP]
 > Always run `make kill-instances ENV=dev` after getting your reports to avoid unnecessary AWS costs. Instances are designed to be disposable!
 
-### 7. Local Development
+### 8. Local Development & Testing
+
+> [!TIP] > **Test locally first!** You can run the full validation workflow locally before deploying to AWS.
 
 ```bash
-# Work with the agent locally
+# Local Testing (recommended before AWS deployment)
+make local                      # Run full validation workflow in Docker locally
+make local-dev                  # Run agent directly (no Docker) for development
+
+# Agent Development
 cd packages/janitor-agent
 npm install
-npm run dev  # Opens Mastra interface at http://localhost:4111
+npm run dev                     # Opens Mastra interface at http://localhost:4111
+```
+
+**Local Testing Benefits:**
+
+- ✅ Test repository validation without AWS costs
+- ✅ Debug issues faster with local logs
+- ✅ Validate changes before cloud deployment
+- ✅ Works with your AWS database (no local setup needed)
+- ✅ Automatic platform detection (Apple Silicon/x86_64)
+
+**Local Test Example:**
+
+```bash
+# Test a specific repository locally
+make local                      # Uses repos from infra/repos.yaml
+# - Builds Docker image locally
+# - Runs validation workflow
+# - Stores results in AWS database
+# - No AWS instances needed!
 ```
 
 ## 📋 Development Guidelines
@@ -180,18 +225,31 @@ make kill-instances ENV=dev     # Terminate all instances
 # Monitoring & Logs
 make logs ENV=dev               # Dump instance logs
 make logs-all ENV=dev           # Follow logs in real-time
-make fetch-report ENV=dev       # Download validation reports
+
+# Database Operations
+make query-runs ENV=dev         # List recent validation runs
+make query-db ENV=dev REPO=name # Query specific repository results
+make db-connect ENV=dev         # Connect to database directly
+make validation-details ENV=dev # Show complete validation details
+
+# Local Development & Testing
+make local                      # Run full validation workflow locally (Docker)
+make local-dev                  # Run agent directly for development
 
 # Updates & Deployment
 make image ENV=dev              # Rebuild image (only after code changes!)
 make build-ami                  # Build custom GPU AMI (optional)
 make destroy ENV=dev            # Destroy all infrastructure
 
-# Debugging
+# SSH Access (requires setup-ssh-key first!)
+make setup-ssh-key ENV=dev     # Set up SSH key with AWS (required)
 make ssh ENV=dev                # SSH into instance for debugging
 ```
 
 ### SSH Debugging Commands
+
+> [!NOTE]  
+> **First run `make setup-ssh-key ENV=dev`** to sync your SSH key with AWS, then launch a new instance. Existing instances use the old key.
 
 When connected via `make ssh ENV=dev`, useful debugging commands on the instance:
 
