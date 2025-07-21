@@ -12,7 +12,7 @@ make setup-supabase
 make start     # Launch GPU instance
 
 # 3. Test with a repository
-make send-prompt PROMPT="validate RunPod/worker-basic"
+make prompt PROMPT="validate RunPod/worker-basic"
 
 # 4. Stop when done
 make stop                      # Stop when not needed
@@ -68,22 +68,20 @@ make deploy-code        # Deploy janitor code to instance (if needed)
 ### Daily Usage
 
 ```bash
-# Send validation requests
-make send-prompt PROMPT="validate RunPod/worker-basic"
-make send-prompt PROMPT="please validate these repos: RunPod/worker-basic, RunPod/worker-template"
-make send-prompt PROMPT="validate worker-template and create a PR if fixes needed"
+# Basic validation
+make prompt PROMPT="validate RunPod/worker-basic"
+make prompt PROMPT="please validate these repos: RunPod/worker-basic, RunPod/worker-template"
+make prompt PROMPT="validate worker-template and create a PR if fixes needed"
 
-# Multiline prompts (use \n for line breaks)
-make send-prompt PROMPT="validate these repos:\nRunPod/worker-basic\nRunPod/worker-template"
+# Multiline prompts
+make prompt PROMPT="validate these repos:\nRunPod/worker-basic\nRunPod/worker-template"
 
-# Complex multiline prompts
-make send-prompt PROMPT="Please validate:\n1. RunPod/worker-basic\n2. RunPod/worker-template\n\nCreate PRs for any fixes needed"
+# Complex requests
+make prompt PROMPT="Please validate:\n1. RunPod/worker-basic\n2. RunPod/worker-template\n\nCreate PRs for any fixes needed"
 
-# Very long prompts from file
-echo "Please validate these repositories and create PRs if fixes are needed:" > prompt.txt
-echo "RunPod/worker-basic" >> prompt.txt
-echo "RunPod/worker-template" >> prompt.txt
-make send-prompt-file FILE=prompt.txt
+# File-based prompts
+echo "validate RunPod/worker-basic" > prompt.txt
+make prompt FILE=prompt.txt
 
 # Check results
 make query-results                     # Recent results

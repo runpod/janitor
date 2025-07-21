@@ -90,7 +90,7 @@ make start            # Launch GPU instance
 make deploy-code               # Deploy janitor code to instance
 
 # Daily usage
-make send-prompt PROMPT="validate RunPod/worker-basic"  # Send validation request
+make prompt PROMPT="validate RunPod/worker-basic"  # Send validation request
 make query-results                                       # Check recent results
 make query-results RUN_ID=your-run-id                   # Check specific run
 make query-results REPO=worker-basic                    # Check repository results

@@ -26,7 +26,7 @@ if [ -z "$1" ]; then
     echo ""
     echo "Usage:"
     echo "  $0 \"please validate these repos: RunPod/worker-basic\""
-    echo "  make send-prompt PROMPT=\"validate RunPod/worker-basic, RunPod/worker-template\""
+    echo "  make prompt PROMPT=\"validate RunPod/worker-basic, RunPod/worker-template\""
     echo ""
     echo "Examples:"
     echo "  $0 \"validate these repositories: RunPod/worker-basic\""

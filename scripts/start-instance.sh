@@ -226,4 +226,4 @@ chmod +x scripts/deploy-code.sh
 echo ""
 echo "🎉 Complete setup finished!"
 echo "📝 Ready to use:"
-echo "   make send-prompt PROMPT=\"validate RunPod/worker-basic\"" 
+echo "   make prompt PROMPT=\"validate RunPod/worker-basic\"" 

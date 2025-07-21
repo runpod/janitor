@@ -86,8 +86,8 @@ status:
 # Usage Commands
 # =============================================================================
 
-.PHONY: send-prompt
-send-prompt:
+.PHONY: prompt
+prompt:
 	@echo "📤 Sending validation prompt to Mastra server..."
 ifdef FILE
 	@echo "📄 Using prompt from file: $(FILE)"
@@ -101,41 +101,21 @@ else ifndef PROMPT
 	@echo "❌ Error: PROMPT parameter or FILE parameter required"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make send-prompt PROMPT=\"validate RunPod/worker-basic\""
-	@echo "  make send-prompt FILE=\"prompt.txt\""
+	@echo "  make prompt PROMPT=\"validate RunPod/worker-basic\""
+	@echo "  make prompt FILE=\"prompt.txt\""
 	@echo ""
-	@echo "Multiline prompts (use \\n for line breaks):"
-	@echo "  make send-prompt PROMPT=\"validate these repos:\\nRunPod/worker-basic\\nRunPod/worker-template\""
+	@echo "Multiline prompts (use \\\\n for line breaks):"
+	@echo "  make prompt PROMPT=\"validate these repos:\\\\nRunPod/worker-basic\\\\nRunPod/worker-template\\\""
 	@echo ""
 	@echo "File-based prompts:"
 	@echo "  echo \"validate these repos:\" > prompt.txt"
 	@echo "  echo \"RunPod/worker-basic\" >> prompt.txt"
-	@echo "  make send-prompt FILE=prompt.txt"
+	@echo "  make prompt FILE=prompt.txt"
 	@exit 1
 else
 	@chmod +x scripts/send-prompt.sh
 	@./scripts/send-prompt.sh "$(PROMPT)"
 endif
-
-.PHONY: send-prompt-file
-send-prompt-file:
-	@echo "📤 Sending prompt from file to Mastra server..."
-ifndef FILE
-	@echo "❌ Error: FILE parameter required"
-	@echo ""
-	@echo "Usage:"
-	@echo "  echo \"validate these repos:\" > prompt.txt"
-	@echo "  echo \"RunPod/worker-basic\" >> prompt.txt"
-	@echo "  echo \"RunPod/worker-template\" >> prompt.txt"
-	@echo "  make send-prompt-file FILE=prompt.txt"
-	@exit 1
-endif
-	@if [ ! -f "$(FILE)" ]; then \
-		echo "❌ Error: File $(FILE) not found"; \
-		exit 1; \
-	fi
-	@chmod +x scripts/send-prompt.sh
-	@./scripts/send-prompt.sh "$$(cat $(FILE))"
 
 .PHONY: query-results
 query-results:
@@ -172,7 +152,7 @@ help:
 	@echo "  make deploy-code        - Deploy janitor code to instance"
 	@echo ""
 	@echo "Daily usage:"
-	@echo "  make send-prompt PROMPT=\"validate RunPod/worker-basic\" - Send validation request"
+	@echo "  make prompt PROMPT=\"validate RunPod/worker-basic\" - Send validation request"
 	@echo "  make query-results                                       - Check recent results"
 	@echo "  make query-results RUN_ID=your-run-id                   - Check specific run"
 	@echo "  make query-results REPO=worker-basic                    - Check repository results"
@@ -187,7 +167,7 @@ help:
 	@echo "  make test-local         - Run local tests"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make send-prompt PROMPT=\"please validate these repos: RunPod/worker-basic\""
-	@echo "  make send-prompt PROMPT=\"validate worker-template and create a PR if fixes needed\""
+	@echo "  make prompt PROMPT=\"please validate these repos: RunPod/worker-basic\""
+	@echo "  make prompt PROMPT=\"validate worker-template and create a PR if fixes needed\""
 
 .DEFAULT_GOAL := help 

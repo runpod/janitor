@@ -1,6 +1,17 @@
 please validate all of these repos:
 
-- runpod-workers/worker-basic
-- runpod-workers/worker-template
-- runpod-workers/worker-sdxl
-- runpod-workers/worker-faster_whisper
+- worker-fasthunyuan
+- worker-mochi
+- worker-tensortllm
+- worker-mochi-1-preview
+- worker-whisper
+- worker-gpt
+- worker-deforum
+- worker-kandinsky
+- worker-github_runner
+- worker-stable_diffusion_v2
+- worker-dreambooth
+- worker-esrgan
+- worker-sdxl-turbo
+- worker-tensorrt-llm
+- worker-tensorrt-llm-triton
