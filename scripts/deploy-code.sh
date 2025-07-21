@@ -75,7 +75,14 @@ scp -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no janitor-code.tar.gz ubuntu@"$
 
 # Deploy on instance
 echo "🔧 Deploying code on instance..."
-ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" << 'EOF'
+ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" \
+    "ANTHROPIC_API_KEY='$ANTHROPIC_API_KEY'" \
+    "GITHUB_PERSONAL_ACCESS_TOKEN='$GITHUB_PERSONAL_ACCESS_TOKEN'" \
+    "SUPABASE_URL='$SUPABASE_URL'" \
+    "SUPABASE_ANON_KEY='$SUPABASE_ANON_KEY'" \
+    "SUPABASE_SERVICE_ROLE_KEY='$SUPABASE_SERVICE_ROLE_KEY'" \
+    "SUPABASE_DB_PASSWORD='$SUPABASE_DB_PASSWORD'" \
+    << 'EOF'
     # Stop the service if running
     sudo systemctl stop janitor-mastra || true
     
@@ -90,17 +97,17 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" << 'EOF'
     cd packages/janitor-agent
     sudo npm install
     
-    # Create environment file using the template from user-data
+    # Create environment file using the passed environment variables
     sudo tee .env > /dev/null << ENVEOF
 # API Keys
-ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
+GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN
 
 # Supabase Configuration  
-SUPABASE_URL=${SUPABASE_URL}
-SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+SUPABASE_URL=$SUPABASE_URL
+SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_DB_PASSWORD=$SUPABASE_DB_PASSWORD
 
 # Server Configuration
 PORT=3000
