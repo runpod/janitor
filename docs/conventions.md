@@ -1,6 +1,6 @@
 # Janitor Agent Project Conventions
 
-This document outlines the conventions, patterns, and operational procedures for the Janitor Agent project. This is a monorepo containing both the agent code and infrastructure for running Docker repository validation on AWS.
+This document outlines the conventions, patterns, and operational procedures for the Janitor Agent project. This is a simplified monorepo with a Mastra-based agent system running on a persistent GPU instance with Supabase database.
 
 ## Project Structure
 
@@ -36,14 +36,13 @@ janitor/
 
 **`infra/`**
 
-- Terraform configurations for AWS infrastructure
-- Packer scripts for building custom AMIs
-- Bootstrap and deployment scripts
-- Environment-specific configurations
+- Simple user-data bootstrap script for GPU instance
+- Supabase database schema
+- Minimal infrastructure configuration
 
 **Root Level**
 
-- `Makefile`: Primary interface for all operations
+- `Makefile`: Simplified interface with 9 essential commands
 - `scripts/`: Cross-cutting deployment utilities
 - Configuration files and documentation
 
@@ -54,16 +53,19 @@ janitor/
 Create a `.env` file in the project root with:
 
 ```bash
-# AWS Configuration
-AWS_PROFILE=your-profile
-AWS_REGION=us-east-1
-ACCOUNT_ID=123456789012
-
-# API Keys
+# API Keys (Required)
 ANTHROPIC_API_KEY=your-anthropic-key
 GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token
 
-# Optional (for debugging)
+# Supabase Configuration (Required)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# AWS Configuration (Simplified)
+AWS_PROFILE=your-profile
+AWS_REGION=us-east-1
+SSH_KEY_NAME=janitor-key
 SSH_KEY_PATH=~/.ssh/janitor-key
 ```
 
@@ -82,25 +84,24 @@ SSH_KEY_PATH=~/.ssh/janitor-key
 The Makefile provides the primary interface for all operations:
 
 ```bash
-# Instance Management
-make launch-instance ENV=dev    # Launch new EC2 instance
-make check-instances ENV=dev    # Check running instances
-make kill-instances ENV=dev     # Terminate all instances
-make ssh ENV=dev               # SSH into instance
-make ssh-info ENV=dev          # Show SSH connection details
+# Setup (one-time)
+make setup-supabase            # Set up Supabase database
+make setup-instance            # Launch GPU instance
+make deploy-code               # Deploy janitor code to instance
 
-# Monitoring and Logs
-make logs ENV=dev              # Dump all logs and exit
-make logs-all ENV=dev          # Follow logs in real-time
+# Daily usage
+make send-prompt PROMPT="validate RunPod/worker-basic"  # Send validation request
+make query-results                                       # Check recent results
+make query-results RUN_ID=your-run-id                   # Check specific run
+make query-results REPO=worker-basic                    # Check repository results
 
-# Database Operations
-make query-runs ENV=dev        # List recent validation runs
-make query-db ENV=dev REPO=name # Query specific repository results
-make db-connect ENV=dev        # Connect to database directly
-make validation-details ENV=dev # Show complete validation details
+# Instance management
+make start-instance            # Start the GPU instance
+make stop-instance             # Stop instance to save costs
+make deploy-code               # Deploy/update code on instance
 
 # Development
-make build                     # Build Docker image locally
+make install                   # Install dependencies locally
 make test-local                # Run local tests
 ```
 

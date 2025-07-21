@@ -1,291 +1,232 @@
-# Janitor
+# Janitor Agent - Simplified GPU Repository Validator
 
-> Automated Docker repository maintenance using AI agents on AWS
-
-![janitor diagram](docs/20250327_janitor_diagram.png)
-
-This monorepo contains an AI agent system that automatically maintains, validates, and enhances Docker repositories using disposable AWS GPU instances.
-
-## 🏗️ Repository Structure
-
-### [`packages/janitor-agent/`](packages/janitor-agent/)
-
-Main AI agent system using [Mastra](https://mastra.ai) with multi-agent architecture:
-
-- **Janitor Agent** - Orchestrates validation, repair, and feature addition
-- **Dev Agent** - Diagnoses issues and implements fixes
-- **PR Creator Agent** - Creates GitHub pull requests
-
-### [`infra/`](infra/)
-
-AWS infrastructure for running agents on disposable GPU instances:
-
-- Terraform configurations for EC2, S3, CloudWatch
-- Packer scripts for custom AMIs
-- Bootstrap and deployment automation
+A streamlined AI agent system for validating Docker repositories with GPU support. This system uses a single persistent GPU instance + Supabase for simple, cost-effective repository validation.
 
 ## 🚀 Quick Start
 
-### 1. Prerequisites
-
-- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- [Docker](https://docs.docker.com/get-docker/) for local development
-- [Make](https://chocolatey.org/packages/make) for workflow commands (Windows: `choco install make`)
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) (v1.0+)
-
-### 2. AWS Account Setup (One-time)
-
-> [!IMPORTANT]  
-> **First-time AWS setup required!** If you don't have AWS configured, follow these steps:
-
-#### A. Create AWS Account
-
-1. Sign up at [aws.amazon.com](https://aws.amazon.com) if you don't have an account
-
-#### B. Create IAM User for CLI Access
-
-1. Log into [AWS Console](https://console.aws.amazon.com/iam/)
-2. Go to **IAM** → **Users** → **Add User**
-3. **User name**: `janitor-user`
-4. **Access type**: ✅ Programmatic access (API/CLI)
-5. **Permissions**: Attach these policies directly:
-    - `AmazonEC2FullAccess`
-    - `AmazonS3FullAccess`
-    - `CloudWatchFullAccess`
-    - `AmazonEC2ContainerRegistryFullAccess`
-    - `AmazonSSMFullAccess`
-    - `AmazonDynamoDBFullAccess`
-    - `IAMFullAccess`
-6. **Save the Access Key ID and Secret Key** (you'll only see these once!)
-
-#### C. Configure AWS CLI
-
 ```bash
-# Configure AWS profile for janitor
-aws configure --profile janitor
-# Enter your Access Key ID and Secret Access Key
-# Region: eu-west-2 (or your preferred region)
-# Output format: json
+# 1. Setup (one-time)
+cp .env.example .env                    # Configure API keys
+make setup-supabase                     # Create Supabase tables
+make setup-instance                     # Launch GPU instance
+
+# 2. Daily usage
+make send-prompt PROMPT="validate RunPod/worker-basic"
+make query-results
+
+# 3. Cost management
+make stop-instance                      # Stop when not needed
+make start-instance                     # Restart when needed
 ```
 
-### 3. Environment Setup
+## 📋 Architecture
+
+**Simple & Persistent:**
+
+- **Single GPU Instance**: Persistent `g5.xlarge` with NVIDIA A10G
+- **Supabase Database**: Managed PostgreSQL for validation results
+- **Mastra Server**: HTTP API accepting natural language prompts
+- **No Complex Infrastructure**: No Terraform, no Aurora, no S3
+
+**Before vs After:**
+
+- ❌ **Before**: 540-line Makefile, Terraform, custom AMIs, Aurora DB, CloudWatch
+- ✅ **After**: 9 simple commands, single GPU instance, Supabase, direct API calls
+
+## 🔧 Environment Setup
+
+Create `.env` with required variables:
 
 ```bash
-# Copy the example environment file
-cp .env.example .env
-```
-
-**Edit `.env` with your values:**
-
-```bash
-# AWS Configuration
-AWS_PROFILE=janitor                    # Profile name from step 2C
-AWS_REGION=eu-west-2                   # Your AWS region
-ACCOUNT_ID=YOUR_AWS_ACCOUNT_ID         # Get with: aws sts get-caller-identity --profile janitor
-
 # API Keys (Required)
-ANTHROPIC_API_KEY=your-key-here        # Get from: https://console.anthropic.com/settings/keys
-GITHUB_PERSONAL_ACCESS_TOKEN=your-token # Get from: https://github.com/settings/tokens (needs 'repo' scope)
+ANTHROPIC_API_KEY=             # Get from: https://console.anthropic.com/settings/keys
+GITHUB_PERSONAL_ACCESS_TOKEN=  # Get from: https://github.com/settings/tokens (needs 'repo' scope)
+
+# Supabase Configuration (Required)
+SUPABASE_URL=                  # Your Supabase project URL (https://your-project.supabase.co)
+SUPABASE_ANON_KEY=            # Your Supabase anon key (for read access)
+SUPABASE_SERVICE_ROLE_KEY=    # Your Supabase service role key (for write access)
+
+# AWS Configuration (Simplified - only for GPU instance)
+AWS_PROFILE=                   # Your AWS profile name (run: aws configure --profile your-profile)
+AWS_REGION=us-east-1          # AWS region for GPU instance (us-east-1 recommended for GPU availability)
+
+# SSH Access (Optional - for debugging GPU instance)
+SSH_KEY_NAME=janitor-key      # Name of your AWS key pair
+SSH_KEY_PATH=~/.ssh/janitor-key # Path to private key (must be absolute on Windows)
 ```
 
-> [!NOTE]  
-> **Get your Account ID**: Run `aws sts get-caller-identity --profile janitor --query Account --output text`
+## 📖 Commands
 
-### 4. Set Up Remote State Backend (One-time, Team Setup)
-
-> [!NOTE]  
-> **Skip this step** if you're working solo. For team collaboration, this creates shared Terraform state.
+### Setup (One-time)
 
 ```bash
-# Create S3 + DynamoDB for remote state (one-time bootstrap)
-cd infra/terraform-backend
-terraform init
-terraform apply
-
-# Add backend configuration to main terraform
-cd ../terraform
-# This creates backend.tf with S3 configuration
+make setup-supabase     # Set up Supabase database
+make setup-instance     # Launch GPU instance
+make deploy-code        # Deploy janitor code to instance (if needed)
 ```
 
-### 5. Deploy Infrastructure (One-time Setup)
+### Daily Usage
 
 ```bash
-# Initialize and deploy AWS infrastructure
-make infra-init
-make infra-plan ENV=dev           # Preview changes before applying
-make infra-apply ENV=dev          # Deploy resources
+# Send validation requests
+make send-prompt PROMPT="validate RunPod/worker-basic"
+make send-prompt PROMPT="please validate these repos: RunPod/worker-basic, RunPod/worker-template"
+make send-prompt PROMPT="validate worker-template and create a PR if fixes needed"
 
-# Build and push Janitor Docker image to ECR (REQUIRED on first setup)
-make image ENV=dev
+# Check results
+make query-results                     # Recent results
+make query-results RUN_ID=your-run-id # Specific run
+make query-results REPO=worker-basic  # Repository history
 ```
 
-> [!IMPORTANT]  
-> **When to rebuild the image**: Run `make image ENV=dev` only when:
->
-> 1. **First time setup** (after deploying infrastructure)
-> 2. **After changing Janitor agent code** in `packages/janitor-agent/`
-
-### 6. Set Up SSH Access (One-time)
-
-> [!IMPORTANT]  
-> **Required for SSH access!** Set up your SSH key before you can connect to instances.
+### Instance Management
 
 ```bash
-# Create and sync SSH key with AWS (required for SSH access)
-make setup-ssh-key ENV=dev
+make start-instance     # Start the GPU instance
+make stop-instance      # Stop instance to save costs
+make deploy-code        # Deploy/update code on instance
 ```
 
-This command will:
-
-- Create `~/.ssh/janitor-key` if it doesn't exist
-- **Replace** the AWS key with your current local key
-- Show fingerprints to confirm the sync
-
-> [!NOTE]  
-> **Switching computers?** Run `make setup-ssh-key ENV=dev` on your new machine, then launch a fresh instance. Existing instances keep their original keys.
-
-### 7. Run Janitor Validation (Daily Usage)
+### Development
 
 ```bash
-# Launch instance and run validation
-make launch-instance ENV=dev
-make status ENV=dev               # Check instance status
-make logs ENV=dev                 # Monitor execution logs
-
-# Get results and clean up
-make query-runs ENV=dev           # List recent validation runs
-make query-db ENV=dev REPO=name   # Query specific repository results
-make kill-instances ENV=dev       # Terminate instances
+make install            # Install dependencies locally
+make test-local         # Run local tests
 ```
 
-> [!TIP]
-> Always run `make kill-instances ENV=dev` after getting your reports to avoid unnecessary AWS costs. Instances are designed to be disposable!
+## 🔍 API Endpoints
 
-### 8. Local Development & Testing
-
-> [!TIP] > **Test locally first!** You can run the full validation workflow locally before deploying to AWS.
+The Mastra server running on your GPU instance exposes:
 
 ```bash
-# Local Testing (recommended before AWS deployment)
-make local                      # Run full validation workflow in Docker locally
-make local-dev                  # Run agent directly (no Docker) for development
+# Health check
+curl http://YOUR-INSTANCE-IP:3000/health
 
-# Agent Development
-cd packages/janitor-agent
-npm install
-npm run dev                     # Opens Mastra interface at http://localhost:4111
+# Send validation prompt
+curl -X POST http://YOUR-INSTANCE-IP:3000/api/prompt \
+  -H "Content-Type: application/json" \
+  -d '{"message": "validate RunPod/worker-basic"}'
+
+# Get results by run ID
+curl http://YOUR-INSTANCE-IP:3000/api/results/YOUR-RUN-ID
+
+# Get results by repository
+curl http://YOUR-INSTANCE-IP:3000/api/results/repo/worker-basic
 ```
 
-**Local Testing Benefits:**
+## 💾 Database Schema
 
-- ✅ Test repository validation without AWS costs
-- ✅ Debug issues faster with local logs
-- ✅ Validate changes before cloud deployment
-- ✅ Works with your AWS database (no local setup needed)
-- ✅ Automatic platform detection (Apple Silicon/x86_64)
+Simple Supabase table for validation results:
 
-**Local Test Example:**
-
-```bash
-# Test a specific repository locally
-make local                      # Uses repos from infra/repos.yaml
-# - Builds Docker image locally
-# - Runs validation workflow
-# - Stores results in AWS database
-# - No AWS instances needed!
+```sql
+CREATE TABLE validation_results (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  run_id UUID NOT NULL,
+  repository_name TEXT NOT NULL,
+  organization TEXT NOT NULL,
+  validation_status TEXT NOT NULL, -- 'success', 'failed', 'running'
+  results_json JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 ```
 
-## 📋 Development Guidelines
+View results in Supabase dashboard: `https://app.supabase.com/project/your-project/editor`
 
-### Working with AI Agents (Cursor, etc.)
+## 🎯 GPU-Aware Validation
 
-When using AI coding assistants, **always** provide this context:
+The system intelligently handles CUDA vs non-CUDA repositories:
 
-> "Please follow the @conventions.md when working in this codebase"
+- **Non-CUDA Images**: Full validation (build + run + logs)
+- **CUDA Images + No GPU**: Build-only validation with clear messaging
+- **CUDA Images + GPU Available**: Full validation including container execution
 
-> [!WARNING]  
-> ALWAYS provide the `docs/conventions.md` for the agent - it contains critical patterns for GPU-aware validation, tool implementation, and monorepo structure that ensure your changes work correctly.
-> ALWAYS let the agent update the `docs/conventions.md` if there are fundamental changes in the code base that need to be persisted for the next agent
+## 💰 Cost Management
 
-### Key Documentation
+**Predictable Costs:**
 
-- **[`docs/conventions.md`](docs/conventions.md)** - for all development work
-- **[`packages/janitor-agent/README.md`](packages/janitor-agent/README.md)** - Detailed agent development guide
-- **[`infra/README.md`](infra/README.md)** - AWS infrastructure setup and deployment
+- GPU Instance: ~$0.50-1.00/hour when running (g5.xlarge)
+- Supabase: Free tier covers expected usage
+- **Stop instance when not actively validating** to save costs
 
-## 🎯 Common Operations
+**No Hidden Costs:**
+
+- No Aurora database charges
+- No CloudWatch log storage
+- No S3 storage costs
+- No complex infrastructure overhead
+
+## 🔧 Troubleshooting
+
+### Instance Issues
 
 ```bash
-# Instance Management
-make launch-instance ENV=dev    # Launch fresh instance
-make status ENV=dev             # Check infrastructure status
-make check-instances ENV=dev    # See what instances are running
-make kill-instances ENV=dev     # Terminate all instances
+# Check instance status
+aws ec2 describe-instances --filters "Name=tag:Name,Values=janitor-gpu-instance"
 
-# Monitoring & Logs
-make logs ENV=dev               # Dump instance logs
-make logs-all ENV=dev           # Follow logs in real-time
+# SSH for debugging
+ssh -i ~/.ssh/janitor-key ubuntu@YOUR-INSTANCE-IP
 
-# Database Operations
-make query-runs ENV=dev         # List recent validation runs
-make query-db ENV=dev REPO=name # Query specific repository results
-make db-connect ENV=dev         # Connect to database directly
-make validation-details ENV=dev # Show complete validation details
-
-# Local Development & Testing
-make local                      # Run full validation workflow locally (Docker)
-make local-dev                  # Run agent directly for development
-
-# Updates & Deployment
-make image ENV=dev              # Rebuild image (only after code changes!)
-make build-ami                  # Build custom GPU AMI (optional)
-make destroy ENV=dev            # Destroy all infrastructure
-
-# SSH Access (requires setup-ssh-key first!)
-make setup-ssh-key ENV=dev     # Set up SSH key with AWS (required)
-make ssh ENV=dev                # SSH into instance for debugging
+# Check Mastra server logs
+ssh -i ~/.ssh/janitor-key ubuntu@YOUR-INSTANCE-IP 'sudo journalctl -u janitor-mastra -f'
 ```
 
-### SSH Debugging Commands
-
-> [!NOTE]  
-> **First run `make setup-ssh-key ENV=dev`** to sync your SSH key with AWS, then launch a new instance. Existing instances use the old key.
-
-When connected via `make ssh ENV=dev`, useful debugging commands on the instance:
+### Service Management
 
 ```bash
+# Restart the Mastra server
+ssh -i ~/.ssh/janitor-key ubuntu@YOUR-INSTANCE-IP 'sudo systemctl restart janitor-mastra'
+
 # Check service status
-sudo systemctl status janitor-runner
-sudo journalctl -u janitor-runner -f
-
-# Check logs
-sudo tail -f /var/log/janitor-runner.log
-sudo tail -f /var/log/janitor-bootstrap.log
-
-# Check Docker
-docker ps -a
-docker logs <container-id>
-docker images
-
-# Check files
-ls -la /opt/janitor/
+ssh -i ~/.ssh/janitor-key ubuntu@YOUR-INSTANCE-IP 'sudo systemctl status janitor-mastra'
 ```
 
-## 📚 Getting Help
+## 📁 Project Structure (Simplified)
 
-1. **New to the project?** Start with [`docs/conventions.md`](docs/conventions.md)
-2. **Working on agents?** See [`packages/janitor-agent/README.md`](packages/janitor-agent/README.md)
-3. **AWS/Infrastructure issues?** Check [`infra/README.md`](infra/README.md)
-4. **Need detailed setup?** All docs are linked from conventions.md
+```
+janitor/
+├── packages/janitor-agent/     # Mastra agent with Supabase integration
+│   ├── src/
+│   │   ├── server.ts          # Express + Mastra server
+│   │   ├── utils/supabase.ts  # Database operations
+│   │   └── utils/prompt-parser.ts # Natural language parsing
+│   └── package.json           # Dependencies
+├── infra/
+│   ├── supabase/schema.sql    # Database schema
+│   └── user-data.sh           # Instance bootstrap script
+├── scripts/                   # 6 simple scripts for operations
+├── docs/                      # Documentation
+└── Makefile                   # 9 simple commands (vs 540 lines before)
+```
 
-## 🏆 User Stories
+## 🚧 Migration from Complex Setup
 
-- ✅ Repository Validation - Automated Docker validation
-- ✅ File System Operations - Cross-platform file handling
-- ✅ Pull Request Creation - Automated GitHub PRs
-- ✅ Feature Addition - Standardized repository enhancements
-- ✅ AWS Cloud Runner - Disposable GPU instances for scale
+If you're migrating from the previous complex infrastructure:
 
-## 📄 License
+1. **Backup any important data** from Aurora/CloudWatch
+2. **Terminate old Terraform resources** to avoid charges
+3. **Follow the Quick Start** above for the new simplified setup
 
-MIT License - see [LICENSE](LICENSE) for details.
+The new system maintains all core functionality while being **80% simpler** to manage.
+
+## 📚 Documentation
+
+- [Conventions](docs/conventions.md) - Development patterns and guidelines
+- [Simplified Setup Plan](docs/planning/008_simplified_setup.md) - Architecture details
+
+## 🤝 Contributing
+
+1. Follow patterns in `docs/conventions.md`
+2. Test locally with `make test-local`
+3. Deploy and test with `make deploy-code`
+4. Submit PR with validation results
+
+---
+
+**Key Benefits:**
+✅ **80% reduction in complexity** (9 commands vs 50+ files)  
+✅ **Predictable costs** (single instance + Supabase free tier)  
+✅ **Natural language interface** ("validate these repos: worker-basic")  
+✅ **GPU-aware validation** (automatic CUDA detection)  
+✅ **Persistent instance** (no complex provisioning/teardown)  
+✅ **Real-time results** (Supabase dashboard + API)
