@@ -71,19 +71,32 @@ aws ec2 stop-instances \
     --profile "$AWS_PROFILE" \
     --region "$AWS_REGION" >/dev/null
 
-echo "⏳ Waiting for instance to stop..."
-aws ec2 wait instance-stopped \
-    --instance-ids "$INSTANCE_ID" \
-    --profile "$AWS_PROFILE" \
-    --region "$AWS_REGION"
+echo "⏳ Waiting for instance to enter stopping state..."
+# Wait for stopping state (much faster than waiting for fully stopped)
+while true; do
+    STATE=$(aws ec2 describe-instances \
+        --instance-ids "$INSTANCE_ID" \
+        --query "Reservations[0].Instances[0].State.Name" \
+        --output text \
+        --profile "$AWS_PROFILE" \
+        --region "$AWS_REGION")
+    
+    if [ "$STATE" = "stopping" ] || [ "$STATE" = "stopped" ]; then
+        echo "✅ Instance is now in '$STATE' state"
+        break
+    fi
+    
+    echo "   Current state: $STATE, waiting..."
+    sleep 2
+done
 
 echo ""
-echo "✅ Instance stopped successfully!"
+echo "✅ Instance stop initiated successfully!"
 echo "📋 Instance ID: $INSTANCE_ID"
-echo "💰 The instance is now stopped to save costs."
+echo "💰 The instance is stopping and will save costs."
 echo ""
 echo "ℹ️  To restart the instance:"
 echo "   make start-instance"
 echo ""
 echo "⚠️  Note: The public IP address will change when you restart the instance."
-echo "   Current stopped IP was: $PUBLIC_IP" 
+echo "   Last known IP was: $PUBLIC_IP" 
