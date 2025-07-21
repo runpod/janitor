@@ -82,3 +82,6 @@ build/
 .DS_Store
 Thumbs.db
 reports
+# Server backup files
+janitor-server-backup.tar.gz
+server-backup/
