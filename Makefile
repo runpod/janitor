@@ -95,23 +95,33 @@ status:
 .PHONY: send-prompt
 send-prompt:
 	@echo "📤 Sending validation prompt to Mastra server..."
-ifndef PROMPT
-	@echo "❌ Error: PROMPT parameter required"
+ifdef FILE
+	@echo "📄 Using prompt from file: $(FILE)"
+	@if [ ! -f "$(FILE)" ]; then \
+		echo "❌ Error: File $(FILE) not found"; \
+		exit 1; \
+	fi
+	@chmod +x scripts/send-prompt.sh
+	@./scripts/send-prompt.sh "$$(cat $(FILE))"
+else ifndef PROMPT
+	@echo "❌ Error: PROMPT parameter or FILE parameter required"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make send-prompt PROMPT=\"validate RunPod/worker-basic\""
+	@echo "  make send-prompt FILE=\"prompt.txt\""
 	@echo ""
 	@echo "Multiline prompts (use \\n for line breaks):"
 	@echo "  make send-prompt PROMPT=\"validate these repos:\\nRunPod/worker-basic\\nRunPod/worker-template\""
 	@echo ""
-	@echo "Complex example:"
-	@echo "  make send-prompt PROMPT=\"Please validate:\\n1. RunPod/worker-basic\\n2. RunPod/worker-template\\n\\nCreate PRs for any fixes needed\""
-	@echo ""
-	@echo "Alternative: Use send-prompt-file for very long prompts"
+	@echo "File-based prompts:"
+	@echo "  echo \"validate these repos:\" > prompt.txt"
+	@echo "  echo \"RunPod/worker-basic\" >> prompt.txt"
+	@echo "  make send-prompt FILE=prompt.txt"
 	@exit 1
-endif
+else
 	@chmod +x scripts/send-prompt.sh
 	@./scripts/send-prompt.sh "$(PROMPT)"
+endif
 
 .PHONY: send-prompt-file
 send-prompt-file:
