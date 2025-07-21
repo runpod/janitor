@@ -52,7 +52,7 @@ if [ "$INSTANCE_ID" = "None" ] || [ "$INSTANCE_ID" = "null" ]; then
     echo "❌ Error: No running instance found with name: $INSTANCE_NAME"
     echo ""
     echo "Please start the instance first:"
-    echo "  make start-instance"
+    echo "  make start"
     exit 1
 fi
 

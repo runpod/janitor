@@ -1,0 +1,6 @@
+please validate all of these repos:
+
+- runpod-workers/worker-basic
+- runpod-workers/worker-template
+- runpod-workers/worker-sdxl
+- runpod-workers/worker-faster_whisper

@@ -34,7 +34,7 @@ INSTANCE_ID=$(aws ec2 describe-instances \
 
 if [ "$INSTANCE_ID" = "None" ] || [ "$INSTANCE_ID" = "null" ]; then
     echo "❌ Error: No running instance found with name: $INSTANCE_NAME"
-    echo "Please start the instance first: make start-instance"
+    echo "Please start the instance first: make start"
     exit 1
 fi
 

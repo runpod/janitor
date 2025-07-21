@@ -86,7 +86,7 @@ The Makefile provides the primary interface for all operations:
 ```bash
 # Setup (one-time)
 make setup-supabase            # Set up Supabase database
-make setup-instance            # Launch GPU instance
+make start            # Launch GPU instance
 make deploy-code               # Deploy janitor code to instance
 
 # Daily usage
@@ -96,8 +96,8 @@ make query-results RUN_ID=your-run-id                   # Check specific run
 make query-results REPO=worker-basic                    # Check repository results
 
 # Instance management
-make start-instance            # Start the GPU instance
-make stop-instance             # Stop instance to save costs
+make start                     # Start the GPU instance
+make stop             # Stop instance to save costs
 make deploy-code               # Deploy/update code on instance
 
 # Development

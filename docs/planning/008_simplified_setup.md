@@ -32,7 +32,7 @@ The simplified system should support:
 - Mastra server handles the prompt parsing and orchestrates the janitor agent internally
 - All validation results are stored in Supabase tables with simple schema (run_id, repo_name, status, results_json, timestamp)
 - Users can query results directly from Supabase web interface or via simple API calls
-- The `make` interface is simplified to just: `make start-instance`, `make stop-instance`, `make send-prompt`
+- The `make` interface is simplified to just: `make start`, `make stop`, `make send-prompt`
 - No Terraform complexity - just a simple EC2 instance with user-data script that installs Docker, Node.js, and starts Mastra server
 - Supabase project handles all database needs (authentication, storage, real-time subscriptions, API)
 - Instance automatically restarts Mastra server on reboot and handles basic failure recovery
@@ -104,8 +104,8 @@ The simplified system should support:
     make query-results REPO="worker-basic"
 
     # Cost management
-    make stop-instance           # Stop instance when not needed
-    make start-instance          # Restart when needed
+    make stop                      # Stop when not needed
+    make start                   # Restart when needed
     ```
 
 - **API Integration**:
@@ -134,7 +134,7 @@ The simplified system should support:
 # Initial setup (one-time)
 cp .env.example .env                    # Configure GITHUB_TOKEN, SUPABASE_URL, SUPABASE_KEY
 make setup-supabase                     # Creates tables in Supabase project
-make setup-instance                     # Launches GPU instance with Mastra server
+make start                     # Launches GPU instance with Mastra server
 
 # Daily validation workflow
 make send-prompt PROMPT="please validate these repos: RunPod/worker-basic, RunPod/worker-template"
@@ -151,8 +151,8 @@ make query-results REPO="worker-basic"
 open "https://app.supabase.com/project/your-project/editor"
 
 # Cost management
-make stop-instance                      # Stop when not needed
-make start-instance                     # Restart for next validation batch
+make stop                      # Stop when not needed
+make start                              # Restart for next validation batch
 ```
 
 ## API Examples

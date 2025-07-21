@@ -47,7 +47,7 @@ if [ "$INSTANCE_ID" = "None" ] || [ "$INSTANCE_ID" = "null" ]; then
     if [ "$STOPPED_INSTANCE" != "None" ] && [ "$STOPPED_INSTANCE" != "null" ]; then
         echo "ℹ️  Instance is already stopped: $STOPPED_INSTANCE"
     else
-        echo "ℹ️  No instances found. Use 'make start-instance' to create one."
+        echo "ℹ️  No instances found. Use 'make start' to create one."
     fi
     exit 0
 fi
@@ -96,7 +96,7 @@ echo "📋 Instance ID: $INSTANCE_ID"
 echo "💰 The instance is stopping and will save costs."
 echo ""
 echo "ℹ️  To restart the instance:"
-echo "   make start-instance"
+echo "   make start"
 echo ""
 echo "⚠️  Note: The public IP address will change when you restart the instance."
 echo "   Last known IP was: $PUBLIC_IP" 

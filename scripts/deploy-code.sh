@@ -35,7 +35,7 @@ INSTANCE_ID=$(aws ec2 describe-instances \
 
 if [ "$INSTANCE_ID" = "None" ] || [ "$INSTANCE_ID" = "null" ]; then
     echo "❌ Error: No running instance found with name: $INSTANCE_NAME"
-    echo "Please start the instance first: make start-instance"
+    echo "Please start the instance first: make start"
     exit 1
 fi
 
@@ -121,6 +121,6 @@ echo "🎉 Code deployment complete!"
 echo "🔗 Mastra API: http://$PUBLIC_IP:3000"
 echo "🔗 Health check: http://$PUBLIC_IP:3000/health"
 echo ""
-echo "ℹ️  This updates an existing instance. For fresh instances, use 'make setup-instance' instead."
+echo "ℹ️  This updates an existing instance. For fresh instances, use 'make start' instead."
 echo "🔧 To check logs: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo journalctl -u janitor-mastra -f'"
 echo "🔄 To restart service: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo systemctl restart janitor-mastra'" 

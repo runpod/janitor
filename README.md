@@ -5,18 +5,17 @@ A streamlined AI agent system for validating Docker repositories with GPU suppor
 ## 🚀 Quick Start
 
 ```bash
-# 1. Setup (one-time)
-cp .env.example .env                    # Configure API keys
-make setup-supabase                     # Create Supabase tables
-make setup-instance                     # Launch GPU instance
+# 1. Setup database (one-time)
+make setup-supabase
 
-# 2. Daily usage
+# 2. Launch GPU instance & deploy
+make start     # Launch GPU instance
+
+# 3. Test with a repository
 make send-prompt PROMPT="validate RunPod/worker-basic"
-make query-results
 
-# 3. Cost management
-make stop-instance                      # Stop when not needed
-make start-instance                     # Restart when needed
+# 4. Stop when done
+make stop                      # Stop when not needed
 ```
 
 ## 📋 Architecture
@@ -99,8 +98,8 @@ make status                            # Check service status
 ### Instance Management
 
 ```bash
-make start-instance     # Start the GPU instance
-make stop-instance      # Stop instance to save costs
+make start              # Start GPU instance
+make stop               # Stop instance to save costs
 make deploy-code        # Deploy/update code on instance
 ```
 

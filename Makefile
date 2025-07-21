@@ -22,33 +22,27 @@ setup-supabase:
 	@chmod +x scripts/setup-supabase.sh
 	@./scripts/setup-supabase.sh
 
-.PHONY: setup-instance
-setup-instance:
-	@echo "🚀 Creating GPU instance with full Janitor setup (everything included)..."
+# =============================================================================
+# Instance Management
+# =============================================================================
+
+.PHONY: start
+start:
+	@echo "🚀 Starting GPU instance with full Janitor setup..."
 	@chmod +x scripts/start-instance.sh
 	@./scripts/start-instance.sh
+
+.PHONY: stop
+stop:
+	@echo "🛑 Stopping GPU instance to save costs..."
+	@chmod +x scripts/stop-instance.sh
+	@./scripts/stop-instance.sh
 
 .PHONY: deploy-code
 deploy-code:
 	@echo "📦 Updating code on existing instance (not needed for fresh instances)..."
 	@chmod +x scripts/deploy-code.sh
 	@./scripts/deploy-code.sh
-
-# =============================================================================
-# Instance Management
-# =============================================================================
-
-.PHONY: start-instance
-start-instance:
-	@echo "🚀 Starting Janitor GPU instance..."
-	@chmod +x scripts/start-instance.sh
-	@./scripts/start-instance.sh
-
-.PHONY: stop-instance
-stop-instance:
-	@echo "🛑 Stopping Janitor GPU instance to save costs..."
-	@chmod +x scripts/stop-instance.sh
-	@./scripts/stop-instance.sh
 
 # =============================================================================
 # Monitoring Commands
@@ -174,7 +168,7 @@ help:
 	@echo ""
 	@echo "Setup (one-time):"
 	@echo "  make setup-supabase     - Set up Supabase database"
-	@echo "  make setup-instance     - Launch GPU instance"
+	@echo "  make start              - Launch GPU instance"
 	@echo "  make deploy-code        - Deploy janitor code to instance"
 	@echo ""
 	@echo "Daily usage:"
@@ -184,8 +178,8 @@ help:
 	@echo "  make query-results REPO=worker-basic                    - Check repository results"
 	@echo ""
 	@echo "Instance management:"
-	@echo "  make start-instance     - Start the GPU instance"
-	@echo "  make stop-instance      - Stop instance to save costs"
+	@echo "  make start              - Start the GPU instance"
+	@echo "  make stop               - Stop instance to save costs"
 	@echo "  make deploy-code        - Deploy/update code on instance"
 	@echo ""
 	@echo "Development:"
