@@ -36,22 +36,16 @@ apt-get update -y
 apt-get install -y nvidia-docker2
 systemctl restart docker
 
-# Create directory for the janitor agent
-echo "Setting up Janitor application..."
+# Create directory for the janitor agent (code will be deployed separately)
+echo "Setting up Janitor application directory..."
 mkdir -p /opt/janitor
 cd /opt/janitor
 
-# Clone the janitor repository directly
-echo "Cloning Janitor repository..."
-git clone https://github.com/runpod-workers/janitor.git .
+# Note: Actual code deployment happens via scripts/deploy-code.sh
+echo "Environment setup complete. Code will be deployed separately."
 
-# Install dependencies for the janitor-agent
-echo "Installing Node.js dependencies..."
-cd packages/janitor-agent
-npm install
-
-# Create environment file template
-cat > packages/janitor-agent/.env << 'EOF'
+# Create environment file template (will be populated during code deployment)
+cat > .env.template << 'EOF'
 # API Keys
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
@@ -67,7 +61,7 @@ PORT=3000
 NODE_ENV=production
 EOF
 
-# Create systemd service for the Mastra server
+# Create systemd service for the Mastra server (will be started after code deployment)
 cat > /etc/systemd/system/janitor-mastra.service << 'EOF'
 [Unit]
 Description=Janitor Mastra Server
@@ -92,9 +86,8 @@ KillSignal=SIGINT
 WantedBy=multi-user.target
 EOF
 
-# Enable and start the service automatically
+# Enable service (but don't start until code is deployed)
 systemctl enable janitor-mastra
-systemctl start janitor-mastra
 
 # Create directories for Docker layer caching (persistent EBS volume)
 mkdir -p /var/lib/docker
@@ -103,9 +96,5 @@ mkdir -p /opt/janitor/docker-cache
 # Set proper ownership
 chown -R ubuntu:ubuntu /opt/janitor
 
-echo "Bootstrap complete! Janitor Mastra server is starting..."
-echo "Service status:"
-systemctl status janitor-mastra --no-pager || true
-echo ""
-echo "🎉 Setup complete! Mastra server should be ready in ~30 seconds."
-echo "Check server logs: journalctl -u janitor-mastra -f" 
+echo "Bootstrap complete! Environment is ready for code deployment."
+echo "Next: Code will be deployed automatically via deploy-code.sh" 

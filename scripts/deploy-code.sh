@@ -90,11 +90,8 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" << 'EOF'
     cd packages/janitor-agent
     sudo npm install
     
-    # Set ownership
-    sudo chown -R ubuntu:ubuntu /opt/janitor
-    
-    # Update environment file with actual values
-    sudo tee /opt/janitor/packages/janitor-agent/.env > /dev/null << ENVEOF
+    # Create environment file using the template from user-data
+    sudo tee .env > /dev/null << ENVEOF
 # API Keys
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
@@ -109,6 +106,9 @@ SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
 PORT=3000
 NODE_ENV=production
 ENVEOF
+    
+    # Set ownership
+    sudo chown -R ubuntu:ubuntu /opt/janitor
     
     # Start the service
     sudo systemctl start janitor-mastra

@@ -158,7 +158,7 @@ echo "🎉 Instance is ready!"
 echo "📋 Instance ID: $INSTANCE_ID"
 echo "🌐 Public IP: $PUBLIC_IP"
 echo ""
-echo "📊 Streaming bootstrap progress (this will stop automatically when complete):"
+echo "📊 Streaming environment setup (this will stop automatically when complete):"
 echo "────────────────────────────────────────────────────────────────────────"
 
 # Wait a moment for the instance to start user-data script
@@ -166,14 +166,14 @@ sleep 10
 
 # Stream the bootstrap logs and wait for completion
 ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" '
-    echo "🔍 Waiting for bootstrap to start..."
+    echo "🔍 Waiting for environment setup to start..."
     
     # Wait for user-data log to exist
     while [ ! -f /var/log/user-data.log ]; do
         sleep 2
     done
     
-    echo "📋 Bootstrap started! Streaming progress..."
+    echo "📋 Environment setup started! Streaming progress..."
     echo ""
     
     # Stream logs until we see completion
@@ -181,9 +181,9 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" '
         echo "$line"
         
         # Stop when we see the completion message
-        if echo "$line" | grep -q "Setup complete! Mastra server should be ready"; then
+        if echo "$line" | grep -q "Bootstrap complete! Environment is ready"; then
             echo ""
-            echo "✅ Bootstrap completed!"
+            echo "✅ Environment setup completed!"
             break
         fi
     done
@@ -191,10 +191,14 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" '
 
 echo ""
 echo "────────────────────────────────────────────────────────────────────────"
-echo "🎉 Setup complete!"
-echo "🔗 Mastra API: http://$PUBLIC_IP:3000"
-echo "🔗 Health Check: http://$PUBLIC_IP:3000/health"
-echo "🔗 SSH: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP"
+echo "🚀 Environment ready! Now deploying code..."
 echo ""
+
+# Deploy the code automatically
+chmod +x scripts/deploy-code.sh
+./scripts/deploy-code.sh
+
+echo ""
+echo "🎉 Complete setup finished!"
 echo "📝 Ready to use:"
 echo "   make send-prompt PROMPT=\"validate RunPod/worker-basic\"" 
