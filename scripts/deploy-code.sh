@@ -69,28 +69,13 @@ tar -czf janitor-code.tar.gz \
     --exclude="*.tar.gz" \
     packages/janitor-agent/
 
-# Create environment file locally first
-echo "📝 Creating environment file..."
-cat > /tmp/janitor.env << EOF
-# API Keys
-ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
-
-# Supabase Configuration  
-SUPABASE_URL=${SUPABASE_URL}
-SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
-
-# Server Configuration
-PORT=3000
-NODE_ENV=production
-EOF
-
 # Copy code to instance
 echo "📤 Uploading code to instance..."
 scp -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no janitor-code.tar.gz ubuntu@"$PUBLIC_IP":/tmp/
-scp -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no /tmp/janitor.env ubuntu@"$PUBLIC_IP":/tmp/
+
+# Copy the existing .env file directly  
+echo "📝 Uploading environment configuration..."
+scp -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no .env ubuntu@"$PUBLIC_IP":/tmp/janitor.env
 
 # Deploy on instance
 echo "🔧 Deploying code on instance..."
@@ -121,9 +106,6 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" << 'EOF'
     
     echo "✅ Deployment complete!"
 EOF
-
-# Cleanup
-rm -f /tmp/janitor.env
 
 # Cleanup local archive
 rm -f janitor-code.tar.gz
