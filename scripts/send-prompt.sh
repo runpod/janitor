@@ -100,13 +100,8 @@ echo "📤 Sending prompt to Mastra server..."
 echo "💬 Prompt: \"$PROMPT\""
 echo ""
 
-# Create JSON payload
-JSON_PAYLOAD=$(cat <<EOF
-{
-  "message": "$PROMPT"
-}
-EOF
-)
+# Create JSON payload using jq to properly escape the prompt
+JSON_PAYLOAD=$(jq -n --arg msg "$PROMPT" '{message: $msg}')
 
 # Send POST request to Mastra API
 RESPONSE=$(curl -s \

@@ -74,6 +74,18 @@ make send-prompt PROMPT="validate RunPod/worker-basic"
 make send-prompt PROMPT="please validate these repos: RunPod/worker-basic, RunPod/worker-template"
 make send-prompt PROMPT="validate worker-template and create a PR if fixes needed"
 
+# Multiline prompts (use \n for line breaks)
+make send-prompt PROMPT="validate these repos:\nRunPod/worker-basic\nRunPod/worker-template"
+
+# Complex multiline prompts
+make send-prompt PROMPT="Please validate:\n1. RunPod/worker-basic\n2. RunPod/worker-template\n\nCreate PRs for any fixes needed"
+
+# Very long prompts from file
+echo "Please validate these repositories and create PRs if fixes are needed:" > prompt.txt
+echo "RunPod/worker-basic" >> prompt.txt
+echo "RunPod/worker-template" >> prompt.txt
+make send-prompt-file FILE=prompt.txt
+
 # Check results
 make query-results                     # Recent results
 make query-results RUN_ID=your-run-id # Specific run
