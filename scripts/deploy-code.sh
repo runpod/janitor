@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Deploy Janitor Code to GPU Instance
-# Use this to deploy/update the janitor code on the running instance
+# Deploy Janitor Code Updates to Running GPU Instance
+# Use this to update code on an existing instance (not needed for initial setup)
 
 set -e
 
@@ -131,5 +131,6 @@ echo "🎉 Code deployment complete!"
 echo "🔗 Mastra API: http://$PUBLIC_IP:3000"
 echo "🔗 Health check: http://$PUBLIC_IP:3000/health"
 echo ""
+echo "ℹ️  This updates an existing instance. For fresh instances, use 'make setup-instance' instead."
 echo "🔧 To check logs: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo journalctl -u janitor-mastra -f'"
 echo "🔄 To restart service: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo systemctl restart janitor-mastra'" 

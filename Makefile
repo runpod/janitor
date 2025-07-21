@@ -13,7 +13,7 @@ AWS_PROFILE ?= default
 SSH_KEY_PATH ?= ~/.ssh/janitor-key
 
 # =============================================================================
-# Setup Commands
+# Setup Commands (One-time)
 # =============================================================================
 
 .PHONY: setup-supabase
@@ -24,13 +24,13 @@ setup-supabase:
 
 .PHONY: setup-instance
 setup-instance:
-	@echo "🚀 Launching GPU instance for Janitor Agent..."
+	@echo "🚀 Creating GPU instance with full Janitor setup (everything included)..."
 	@chmod +x scripts/start-instance.sh
 	@./scripts/start-instance.sh
 
 .PHONY: deploy-code
 deploy-code:
-	@echo "📦 Deploying Janitor code to GPU instance..."
+	@echo "📦 Updating code on existing instance (not needed for fresh instances)..."
 	@chmod +x scripts/deploy-code.sh
 	@./scripts/deploy-code.sh
 

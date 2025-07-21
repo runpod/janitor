@@ -92,8 +92,9 @@ KillSignal=SIGINT
 WantedBy=multi-user.target
 EOF
 
-# Enable the service (but don't start it yet - needs code deployment)
+# Enable and start the service automatically
 systemctl enable janitor-mastra
+systemctl start janitor-mastra
 
 # Create directories for Docker layer caching (persistent EBS volume)
 mkdir -p /var/lib/docker
@@ -102,9 +103,9 @@ mkdir -p /opt/janitor/docker-cache
 # Set proper ownership
 chown -R ubuntu:ubuntu /opt/janitor
 
-echo "Bootstrap complete! Instance is ready for Janitor code deployment."
-echo "To complete setup:"
-echo "1. Deploy the janitor-agent code to /opt/janitor/packages/janitor-agent"
-echo "2. Update /opt/janitor/.env with actual API keys"
-echo "3. Run: systemctl start janitor-mastra"
-echo "4. Check logs: journalctl -u janitor-mastra -f" 
+echo "Bootstrap complete! Janitor Mastra server is starting..."
+echo "Service status:"
+systemctl status janitor-mastra --no-pager || true
+echo ""
+echo "🎉 Setup complete! Mastra server should be ready in ~30 seconds."
+echo "Check server logs: journalctl -u janitor-mastra -f" 
