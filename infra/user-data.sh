@@ -51,7 +51,7 @@ cd packages/janitor-agent
 npm install
 
 # Create environment file template
-cat > .env << 'EOF'
+cat > packages/janitor-agent/.env << 'EOF'
 # API Keys
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
@@ -77,13 +77,15 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/opt/janitor/packages/janitor-agent
 Environment=NODE_ENV=production
-EnvironmentFile=/opt/janitor/.env
+Environment=PATH=/usr/bin:/usr/local/bin
 ExecStart=/usr/bin/npm start
 Restart=always
 RestartSec=10
-StandardOutput=journal
-StandardError=journal
+StandardOutput=syslog
+StandardError=syslog
 SyslogIdentifier=janitor-mastra
+KillMode=mixed
+KillSignal=SIGINT
 
 [Install]
 WantedBy=multi-user.target

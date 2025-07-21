@@ -94,7 +94,7 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" << 'EOF'
     sudo chown -R ubuntu:ubuntu /opt/janitor
     
     # Update environment file with actual values
-    sudo tee /opt/janitor/.env > /dev/null << ENVEOF
+    sudo tee /opt/janitor/packages/janitor-agent/.env > /dev/null << ENVEOF
 # API Keys
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
