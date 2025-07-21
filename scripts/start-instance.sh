@@ -158,42 +158,39 @@ echo "🎉 Instance is ready!"
 echo "📋 Instance ID: $INSTANCE_ID"
 echo "🌐 Public IP: $PUBLIC_IP"
 echo ""
-echo "⏳ Bootstrapping in progress... This will:"
-echo "   1. Install Docker, Node.js, dependencies (~3 minutes)"
-echo "   2. Clone repo and setup Mastra server (~1 minute)" 
-echo "   3. Start Janitor service automatically (~30 seconds)"
-echo ""
-echo "📊 Monitoring bootstrap progress (press Ctrl+C when you see 'Setup complete!'):"
+echo "📊 Streaming bootstrap progress (this will stop automatically when complete):"
+echo "────────────────────────────────────────────────────────────────────────"
 
-# Stream the user-data log in real-time
-ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" 'tail -f /var/log/user-data.log 2>/dev/null | grep -E "(Installing|Cloning|Bootstrap|Setup complete|Starting)" --line-buffered' &
-TAIL_PID=$!
+# Wait a moment for the instance to start user-data script
+sleep 10
 
-# Wait for the service to be active
-echo ""
-echo "🔍 Waiting for Mastra service to be ready..."
-for i in {1..60}; do
-    SERVICE_STATUS=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" 'systemctl is-active janitor-mastra 2>/dev/null || echo inactive')
+# Stream the bootstrap logs and wait for completion
+ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" '
+    echo "🔍 Waiting for bootstrap to start..."
     
-    if [ "$SERVICE_STATUS" = "active" ]; then
-        echo "✅ Mastra service is running!"
-        break
-    fi
+    # Wait for user-data log to exist
+    while [ ! -f /var/log/user-data.log ]; do
+        sleep 2
+    done
     
-    if [ $i -eq 60 ]; then
-        echo "⚠️  Service not ready yet, but you can check manually:"
-        echo "   ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo journalctl -u janitor-mastra -f'"
-        break
-    fi
+    echo "📋 Bootstrap started! Streaming progress..."
+    echo ""
     
-    echo "   ⏳ Service status: $SERVICE_STATUS (${i}/60)"
-    sleep 5
-done
-
-# Stop the log streaming
-kill $TAIL_PID 2>/dev/null || true
+    # Stream logs until we see completion
+    tail -f /var/log/user-data.log | while read line; do
+        echo "$line"
+        
+        # Stop when we see the completion message
+        if echo "$line" | grep -q "Setup complete! Mastra server should be ready"; then
+            echo ""
+            echo "✅ Bootstrap completed!"
+            break
+        fi
+    done
+'
 
 echo ""
+echo "────────────────────────────────────────────────────────────────────────"
 echo "🎉 Setup complete!"
 echo "🔗 Mastra API: http://$PUBLIC_IP:3000"
 echo "🔗 Health Check: http://$PUBLIC_IP:3000/health"
