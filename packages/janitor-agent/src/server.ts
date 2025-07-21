@@ -8,7 +8,7 @@ import { parseRepositoriesFromPrompt } from "./utils/prompt-parser";
 import { storeValidationResult, updateValidationResult } from "./utils/supabase.js";
 
 // Load environment variables from project root
-config({ path: path.resolve(process.cwd(), "../../.env") });
+config({ path: ".env" });
 
 const app = express();
 const PORT = process.env.PORT || 3000;

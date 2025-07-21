@@ -6,7 +6,7 @@ import { LanguageModelV1 } from "@ai-sdk/provider";
 import dotenv from "dotenv";
 import path from "path";
 
-dotenv.config({ path: path.resolve(process.cwd(), "../../.env") });
+dotenv.config({ path: ".env" });
 
 // Only require essential environment variables for basic functionality
 const requiredEnvVars = ["ANTHROPIC_API_KEY"];
