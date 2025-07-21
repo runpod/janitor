@@ -51,6 +51,44 @@ stop-instance:
 	@./scripts/stop-instance.sh
 
 # =============================================================================
+# Monitoring Commands
+# =============================================================================
+
+.PHONY: logs
+logs:
+	@echo "📊 Streaming Janitor agent logs (press Ctrl+C to exit)..."
+	@chmod +x scripts/show-logs.sh
+	@./scripts/show-logs.sh
+
+.PHONY: status
+status:
+	@echo "🔍 Checking Janitor service status..."
+	@if [ -f ".env" ]; then \
+		source .env && \
+		INSTANCE_ID=$$(aws ec2 describe-instances \
+			--filters "Name=tag:Name,Values=janitor-gpu-instance" "Name=instance-state-name,Values=running" \
+			--query "Reservations[0].Instances[0].InstanceId" \
+			--output text \
+			--profile "$$AWS_PROFILE" \
+			--region "$$AWS_REGION" 2>/dev/null || echo "None"); \
+		if [ "$$INSTANCE_ID" != "None" ] && [ "$$INSTANCE_ID" != "null" ]; then \
+			PUBLIC_IP=$$(aws ec2 describe-instances \
+				--instance-ids "$$INSTANCE_ID" \
+				--query "Reservations[0].Instances[0].PublicIpAddress" \
+				--output text \
+				--profile "$$AWS_PROFILE" \
+				--region "$$AWS_REGION"); \
+			echo "📋 Instance: $$INSTANCE_ID"; \
+			echo "🌐 IP: $$PUBLIC_IP"; \
+			ssh -i "$$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$$PUBLIC_IP" 'sudo systemctl status janitor-mastra --no-pager'; \
+		else \
+			echo "❌ No running instance found"; \
+		fi; \
+	else \
+		echo "❌ .env file not found"; \
+	fi
+
+# =============================================================================
 # Usage Commands
 # =============================================================================
 

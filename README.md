@@ -78,6 +78,10 @@ make send-prompt PROMPT="validate worker-template and create a PR if fixes neede
 make query-results                     # Recent results
 make query-results RUN_ID=your-run-id # Specific run
 make query-results REPO=worker-basic  # Repository history
+
+# Monitor activity
+make logs                              # Stream real-time agent logs
+make status                            # Check service status
 ```
 
 ### Instance Management
