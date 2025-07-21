@@ -56,8 +56,9 @@ echo ""
 
 # Stream the logs with proper formatting
 ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" '
-    sudo journalctl -u janitor-mastra -f --no-pager --since "10 minutes ago" | \
-    while read line; do
+    # Show last 50 entries and follow new ones
+    sudo journalctl -u janitor-mastra -n 50 -f --no-pager | \
+    while IFS= read -r line; do
         # Add some color/formatting to important messages
         if echo "$line" | grep -q "Starting validation\|Completed validation\|✅\|❌\|🎉"; then
             echo "🔸 $line"
