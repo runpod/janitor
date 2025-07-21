@@ -565,6 +565,66 @@ return {
 - Automated testing pipelines
 - Performance monitoring and optimization
 
+## Git Conventions
+
+### Commit Message Format
+
+All commit messages must follow Angular conventional commit format with lowercase text:
+
+```
+type(scope): description
+
+optional body
+
+optional footer
+```
+
+**Types:**
+
+- `feat`: new feature
+- `fix`: bug fix
+- `docs`: documentation changes
+- `style`: formatting, missing semicolons, etc.
+- `refactor`: code change that neither fixes a bug nor adds a feature
+- `perf`: performance improvement
+- `test`: adding missing tests
+- `chore`: maintenance tasks, dependencies, etc.
+- `ci`: continuous integration changes
+- `build`: build system changes
+
+**Scope:**
+
+- Use kebab-case for multi-word scopes
+- Common scopes: `setup`, `deploy`, `auth`, `api`, `db`, `agent`, `tools`
+
+**Description:**
+
+- Use lowercase and imperative mood ("add" not "adds" or "added")
+- No period at the end
+- Maximum 72 characters
+
+**Examples:**
+
+```bash
+feat(setup): add real-time bootstrap progress monitoring
+fix(auth): handle expired github tokens properly
+docs(readme): update installation instructions
+refactor(agent): simplify validation workflow
+chore(deps): update mastra to v0.10.9
+```
+
+**Multi-line commits:**
+
+```bash
+feat(api): add repository validation endpoints
+
+- implement POST /api/prompt for natural language requests
+- add GET /api/results/{runId} for status checking
+- include error handling for invalid repositories
+
+closes #123
+```
+
 ## Conclusion
 
 This document should serve as the primary reference for working with the Janitor Agent project. The monorepo structure allows for coordinated development of both agent logic and infrastructure, while the Makefile provides a unified interface for all operations.
