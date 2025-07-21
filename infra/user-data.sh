@@ -21,10 +21,10 @@ usermod -aG docker ubuntu
 systemctl enable docker
 systemctl start docker
 
-# Install Node.js (using NodeSource repository for latest LTS)
-echo "Installing Node.js..."
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
+# Install NVIDIA GPU Drivers first (required for GPU instances)
+echo "Installing NVIDIA GPU drivers..."
+apt-get install -y ubuntu-drivers-common
+ubuntu-drivers autoinstall
 
 # Install NVIDIA Docker support for GPU access
 echo "Installing NVIDIA Docker support..."
@@ -34,7 +34,31 @@ curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.li
 
 apt-get update -y
 apt-get install -y nvidia-docker2
+
+# Configure Docker to use nvidia runtime as default
+echo "Configuring Docker for GPU access..."
+cat > /etc/docker/daemon.json << 'EOF'
+{
+    "default-runtime": "nvidia",
+    "runtimes": {
+        "nvidia": {
+            "path": "nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    }
+}
+EOF
+
 systemctl restart docker
+
+# Verify GPU setup (will be visible in logs)
+echo "Verifying GPU setup..."
+nvidia-smi || echo "GPU verification will complete after reboot"
+
+# Install Node.js (using NodeSource repository for latest LTS)
+echo "Installing Node.js..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
 
 # Create directory for the janitor agent (code will be deployed separately)
 echo "Setting up Janitor application directory..."

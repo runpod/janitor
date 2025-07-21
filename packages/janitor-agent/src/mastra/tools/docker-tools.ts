@@ -325,11 +325,26 @@ export const buildDockerImage = async (
  */
 const checkGpuAvailability = async (): Promise<boolean> => {
 	try {
+		console.log("🔍 Checking GPU availability...");
+
 		// Check if nvidia-smi command exists and works
-		const result = await spawnWithLogs("nvidia-smi", [], undefined, 5000);
-		return result.success;
+		const result = await spawnWithLogs("nvidia-smi", [], undefined, 10000);
+
+		if (result.success) {
+			console.log("✅ GPU detected via nvidia-smi");
+			console.log("GPU Info:");
+			// Log first few lines of nvidia-smi output for debugging
+			const lines = result.output.split("\n").slice(0, 5);
+			lines.forEach(line => console.log(`   ${line}`));
+			return true;
+		} else {
+			console.log("❌ nvidia-smi failed or not available");
+			console.log(`   Error: ${result.error}`);
+			return false;
+		}
 	} catch (error) {
-		// nvidia-smi not available or failed
+		console.log("❌ GPU check failed with exception");
+		console.log(`   Error: ${error}`);
 		return false;
 	}
 };
@@ -339,6 +354,7 @@ const checkGpuAvailability = async (): Promise<boolean> => {
  */
 export const isCudaDockerfile = (dockerfilePath: string): boolean => {
 	try {
+		console.log(`🔍 Checking if Dockerfile contains CUDA content: ${dockerfilePath}`);
 		const dockerfileContent = fs.readFileSync(dockerfilePath, "utf8").toLowerCase();
 
 		// Check for common CUDA indicators
@@ -352,11 +368,33 @@ export const isCudaDockerfile = (dockerfilePath: string): boolean => {
 			"nvidia-docker",
 			"gpu",
 			"nvidia/driver",
+			"pytorch/pytorch", // PyTorch often uses GPU
+			"tensorflow/tensorflow", // TensorFlow GPU images
+			"nvidia/pytorch",
+			"nvidia/tensorflow",
+			"nvcr.io", // NVIDIA Container Registry
+			"--gpus", // Docker run flag for GPU
+			"cuda-dev", // CUDA development images
+			"cuda-runtime", // CUDA runtime images
+			"nvidia-smi", // NVIDIA System Management Interface
 		];
 
-		return cudaIndicators.some(indicator => dockerfileContent.includes(indicator));
+		const foundIndicators = cudaIndicators.filter(indicator =>
+			dockerfileContent.includes(indicator)
+		);
+
+		const isCuda = foundIndicators.length > 0;
+
+		if (isCuda) {
+			console.log(`✅ CUDA-based Dockerfile detected`);
+			console.log(`   Found indicators: ${foundIndicators.join(", ")}`);
+		} else {
+			console.log(`ℹ️  Non-CUDA Dockerfile (no GPU indicators found)`);
+		}
+
+		return isCuda;
 	} catch (error) {
-		console.warn(`Could not read Dockerfile to check for CUDA: ${error}`);
+		console.warn(`⚠️  Could not read Dockerfile to check for CUDA: ${error}`);
 		return false; // Assume non-CUDA if we can't read it
 	}
 };
@@ -412,9 +450,10 @@ export const runDockerContainer = async (
 		// Only add GPU support if GPUs are available
 		if (hasGpu) {
 			runArgs.push("--gpus", "all");
-			console.log(`Adding GPU support (--gpus all)`);
+			console.log(`✅ Adding GPU support (--gpus all)`);
 		} else {
-			console.log(`Skipping GPU support (no GPUs detected)`);
+			console.log(`⚠️  Skipping GPU support - no GPUs detected`);
+			console.log(`   Note: If this is a GPU instance, check NVIDIA driver installation`);
 		}
 
 		runArgs.push("--name", finalContainerName);
