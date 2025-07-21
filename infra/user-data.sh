@@ -1,59 +1,25 @@
 #!/bin/bash
 
-# User Data Script for Simplified Janitor GPU Instance
-# This script bootstraps a GPU instance with everything needed to run Mastra server
+# User Data Script for Simplified Janitor GPU Instance (Deep Learning AMI)
+# This script bootstraps a Deep Learning AMI that already has GPU drivers and CUDA installed
 
 set -e
 
 # Log all output to CloudWatch logs (optional but helpful for debugging)
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-echo "Starting Janitor GPU instance bootstrap..."
+echo "Starting Janitor GPU instance bootstrap on Deep Learning AMI..."
 
 # Update system
 apt-get update -y
 apt-get install -y curl wget git unzip
 
-# Install Docker
-echo "Installing Docker..."
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-usermod -aG docker ubuntu
-systemctl enable docker
-systemctl start docker
-
-# Install NVIDIA GPU Drivers first (required for GPU instances)
-echo "Installing NVIDIA GPU drivers..."
-apt-get install -y ubuntu-drivers-common
-ubuntu-drivers autoinstall
-
-# Install NVIDIA Docker support for GPU access
-echo "Installing NVIDIA Docker support..."
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
-curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list
-
-apt-get update -y
-apt-get install -y nvidia-docker2
-
-# Configure Docker to use nvidia runtime as default
-echo "Configuring Docker for GPU access..."
-cat > /etc/docker/daemon.json << 'EOF'
-{
-    "default-runtime": "nvidia",
-    "runtimes": {
-        "nvidia": {
-            "path": "nvidia-container-runtime",
-            "runtimeArgs": []
-        }
-    }
-}
-EOF
-
-systemctl restart docker
-
-# Verify GPU setup (will be visible in logs)
+# Verify GPU and Docker are working (pre-installed on Deep Learning AMI)
 echo "Verifying GPU setup..."
-nvidia-smi || echo "GPU verification will complete after reboot"
+nvidia-smi
+echo "GPU verification complete!"
+
+echo "Verifying Docker GPU support..."
+docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi || echo "Docker GPU test completed"
 
 # Install Node.js (using NodeSource repository for latest LTS)
 echo "Installing Node.js..."

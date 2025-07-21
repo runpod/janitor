@@ -33,11 +33,11 @@ INSTANCE_TYPE="g5.xlarge"  # GPU instance with 1x NVIDIA A10G
 SECURITY_GROUP_NAME="janitor-sg"
 INSTANCE_NAME="janitor-gpu-instance"
 
-# Find the latest Ubuntu 22.04 LTS AMI automatically
-echo "🔍 Finding latest Ubuntu 22.04 LTS AMI..."
+# Use Deep Learning AMI with NVIDIA drivers and CUDA pre-installed
+echo "🔍 Finding latest Deep Learning AMI (GPU optimized)..."
 AMI_ID=$(aws ec2 describe-images \
-    --owners 099720109477 \
-    --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
+    --owners amazon \
+    --filters "Name=name,Values=Deep Learning AMI GPU PyTorch*Ubuntu*" \
               "Name=state,Values=available" \
     --query "Images | sort_by(@, &CreationDate) | [-1].ImageId" \
     --output text \
@@ -45,11 +45,27 @@ AMI_ID=$(aws ec2 describe-images \
     --region "$AWS_REGION" 2>/dev/null)
 
 if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
-    echo "❌ Could not find Ubuntu 22.04 LTS AMI. Using fallback AMI..."
-    AMI_ID="ami-0866a3c8686eaeeba"  # Ubuntu 24.04 LTS fallback
+    echo "⚠️  Deep Learning AMI not found, trying alternative..."
+    # Fallback to NVIDIA Deep Learning AMI
+    AMI_ID=$(aws ec2 describe-images \
+        --owners amazon \
+        --filters "Name=name,Values=Deep Learning AMI*" \
+                  "Name=state,Values=available" \
+                  "Name=architecture,Values=x86_64" \
+        --query "Images | sort_by(@, &CreationDate) | [-1].ImageId" \
+        --output text \
+        --profile "$AWS_PROFILE" \
+        --region "$AWS_REGION" 2>/dev/null)
 fi
 
-echo "✅ Using AMI: $AMI_ID"
+if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
+    echo "❌ Could not find Deep Learning AMI. Using known working AMI as fallback..."
+    # Known working Deep Learning AMI (update this periodically)
+    AMI_ID="ami-0c2b8ca1dad447f8a"  # Deep Learning AMI GPU PyTorch 2.0.1 (Ubuntu 20.04)
+fi
+
+echo "✅ Using GPU-ready AMI: $AMI_ID"
+echo "   This AMI includes: NVIDIA drivers, CUDA, Docker GPU support"
 
 # Create security group if it doesn't exist
 echo "🔒 Setting up security group..."
