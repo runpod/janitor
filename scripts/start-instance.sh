@@ -122,7 +122,7 @@ if [ "$EXISTING_INSTANCE" != "None" ] && [ "$EXISTING_INSTANCE" != "null" ]; the
 fi
 
 # Launch new instance
-echo "🖥️  Launching new instance..."
+echo "🖥️  Launching new instance with 300GB storage..."
 INSTANCE_ID=$(aws ec2 run-instances \
     --image-id "$AMI_ID" \
     --count 1 \
@@ -130,6 +130,15 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --key-name "$SSH_KEY_NAME" \
     --security-groups "$SECURITY_GROUP_NAME" \
     --user-data "$USER_DATA" \
+    --block-device-mappings '[{
+        "DeviceName": "/dev/sda1",
+        "Ebs": {
+            "VolumeSize": 300,
+            "VolumeType": "gp3",
+            "DeleteOnTermination": true,
+            "Encrypted": false
+        }
+    }]' \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
     --query "Instances[0].InstanceId" \
     --output text \
