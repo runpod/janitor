@@ -294,7 +294,7 @@ const dockerLogsStep = createStep({
 		console.log("----------------------------------------------------------------\n");
 
 		const containerId = inputData.containerId;
-		const waitTime = 3000; // Wait 3 seconds for container to run and generate logs
+		const waitTime = 10000; // Wait 10 seconds for container to run and generate logs
 		const tail = 100;
 
 		console.log(`Waiting ${waitTime}ms before checking logs for container: ${containerId}`);
