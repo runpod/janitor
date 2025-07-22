@@ -40,6 +40,7 @@ yarn-error.log*
 .mastra
 dist
 repos/*
+packages/janitor-agent/repos/*
 !repos/repositories.json
 .env.development
 memory.db*

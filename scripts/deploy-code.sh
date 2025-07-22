@@ -88,7 +88,7 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" << 'EOF'
     cd /opt/janitor
     
     # Extract new code
-    sudo tar -xzf /tmp/janitor-code.tar.gz
+    sudo tar -xzf /tmp/janitor-code.tar.gz --no-xattrs 2>/dev/null
     
     # Install dependencies
     cd packages/janitor-agent

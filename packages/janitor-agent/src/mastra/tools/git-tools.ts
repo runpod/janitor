@@ -107,9 +107,9 @@ export const checkGitStatus = async (
 			.split("\n")
 			.filter(line => line.trim().length > 0)
 			.map(line => {
-				// Git status --porcelain format: "XY filename"
-				// Where X is staged status, Y is unstaged status
-				return line.substring(3).trim(); // Remove status chars and trim
+				// Git status --porcelain format: "X filename"
+				// Where X is modification status (M/A/D/etc), followed by space, then filename
+				return line.substring(2).trim(); // Remove status char + space, then trim
 			});
 
 		console.log(`Git status check: ${hasChanges ? "Changes detected" : "No changes"}`);

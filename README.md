@@ -11,10 +11,25 @@ make setup-supabase
 # 2. Launch GPU instance & deploy
 make start     # Launch GPU instance
 
-# 3. Test with a repository
+# 3. Test with simple validation (Legacy format)
 make prompt PROMPT="validate RunPod/worker-basic"
 
-# 4. Stop when done
+# 4. Test with DSL format using default prompt
+make prompt FILE=validate           # Uses prompts/validate.md
+
+# 5. Create custom prompts
+cat > prompts/my-task.md << 'EOF'
+# PROMPT
+Add comprehensive monitoring and alerting
+
+# REPOS
+- worker-basic
+- worker-template
+EOF
+
+make prompt FILE=my-task
+
+# 6. Stop when done
 make stop                      # Stop when not needed
 ```
 
@@ -68,20 +83,10 @@ make deploy-code        # Deploy janitor code to instance (if needed)
 ### Daily Usage
 
 ```bash
-# Basic validation
+# Send prompts
 make prompt PROMPT="validate RunPod/worker-basic"
-make prompt PROMPT="please validate these repos: RunPod/worker-basic, RunPod/worker-template"
-make prompt PROMPT="validate worker-template and create a PR if fixes needed"
-
-# Multiline prompts
-make prompt PROMPT="validate these repos:\nRunPod/worker-basic\nRunPod/worker-template"
-
-# Complex requests
-make prompt PROMPT="Please validate:\n1. RunPod/worker-basic\n2. RunPod/worker-template\n\nCreate PRs for any fixes needed"
-
-# File-based prompts
-echo "validate RunPod/worker-basic" > prompt.txt
-make prompt FILE=prompt.txt
+make prompt FILE=validate              # Use prompts/validate.md
+make prompt FILE=my-custom-task        # Use prompts/my-custom-task.md
 
 # Check results
 make query-results                     # Recent results
@@ -234,12 +239,59 @@ The new system maintains all core functionality while being **80% simpler** to m
 3. Deploy and test with `make deploy-code`
 4. Submit PR with validation results
 
----
+## 📝 Prompt Files
 
-**Key Benefits:**
-✅ **80% reduction in complexity** (9 commands vs 50+ files)  
-✅ **Predictable costs** (single instance + Supabase free tier)  
-✅ **Natural language interface** ("validate these repos: worker-basic")  
-✅ **GPU-aware validation** (automatic CUDA detection)  
-✅ **Persistent instance** (no complex provisioning/teardown)  
-✅ **Real-time results** (Supabase dashboard + API)
+Use markdown files for complex multi-repository tasks.
+
+### Format
+
+```markdown
+# PROMPT
+
+[Your complete instruction - can contain code, examples, detailed context]
+
+# REPOS
+
+- repository-name
+- another-repository
+```
+
+### Usage
+
+```bash
+# Use default validation prompt
+make prompt FILE=validate              # Uses prompts/validate.md
+
+# Use custom prompts from prompts/ folder
+make prompt FILE=my-task               # Uses prompts/my-task.md
+
+# Use direct file paths
+make prompt FILE=prompts/custom.md
+make prompt FILE=../shared/task.md
+
+# Inline format
+make prompt PROMPT="# PROMPT\nAdd logging\n\n# REPOS\n- worker-basic"
+
+# Legacy format (still supported)
+make prompt PROMPT="validate worker-basic, worker-template"
+```
+
+### Creating Custom Prompts
+
+```bash
+cat > prompts/add-logging.md << 'EOF'
+# PROMPT
+Add structured logging with performance metrics.
+
+### Requirements:
+- JSON output format
+- Performance measurement decorators
+- Error logging for failures
+
+# REPOS
+- worker-basic
+- worker-template
+EOF
+
+make prompt FILE=add-logging
+```

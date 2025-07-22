@@ -50,23 +50,23 @@ INSTANCE_TYPE="g5.xlarge"  # GPU instance with 1x NVIDIA A10G
 SECURITY_GROUP_NAME="janitor-sg"
 INSTANCE_NAME="janitor-gpu-instance"
 
-# Use Deep Learning AMI with NVIDIA drivers and CUDA pre-installed
-echo "🔍 Finding latest Deep Learning AMI (GPU optimized)..."
-AMI_ID=$(aws ec2 describe-images \
-    --owners amazon \
-    --filters "Name=name,Values=Deep Learning AMI GPU PyTorch*Ubuntu*" \
-              "Name=state,Values=available" \
-    --query "Images | sort_by(@, &CreationDate) | [-1].ImageId" \
-    --output text \
+# Use Deep Learning Base AMI with NVIDIA drivers and CUDA 12.x pre-installed (Ubuntu 22.04)
+echo "🔍 Finding latest Deep Learning Base AMI (GPU optimized with CUDA 12.x)..."
+
+# Try to get latest AMI via SSM parameter (AWS recommended method)
+AMI_ID=$(aws ssm get-parameter \
+    --region "$AWS_REGION" \
     --profile "$AWS_PROFILE" \
-    --region "$AWS_REGION" 2>/dev/null)
+    --name "/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id" \
+    --query "Parameter.Value" \
+    --output text 2>/dev/null)
 
 if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
-    echo "⚠️  Deep Learning AMI not found, trying alternative..."
-    # Fallback to NVIDIA Deep Learning AMI
+    echo "⚠️  SSM parameter lookup failed, trying direct AMI search..."
+    # Fallback to direct AMI search for Ubuntu 22.04 with CUDA 12.x
     AMI_ID=$(aws ec2 describe-images \
         --owners amazon \
-        --filters "Name=name,Values=Deep Learning AMI*" \
+        --filters "Name=name,Values=Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*" \
                   "Name=state,Values=available" \
                   "Name=architecture,Values=x86_64" \
         --query "Images | sort_by(@, &CreationDate) | [-1].ImageId" \
@@ -76,13 +76,29 @@ if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
 fi
 
 if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
-    echo "❌ Could not find Deep Learning AMI. Using known working AMI as fallback..."
-    # Known working Deep Learning AMI (update this periodically)
-    AMI_ID="ami-0c2b8ca1dad447f8a"  # Deep Learning AMI GPU PyTorch 2.0.1 (Ubuntu 20.04)
+    echo "⚠️  Ubuntu 22.04 AMI not found, trying older Deep Learning AMIs..."
+    # Fallback to any Deep Learning AMI
+    AMI_ID=$(aws ec2 describe-images \
+        --owners amazon \
+        --filters "Name=name,Values=Deep Learning*AMI*GPU*" \
+                  "Name=state,Values=available" \
+                  "Name=architecture,Values=x86_64" \
+        --query "Images | sort_by(@, &CreationDate) | [-1].ImageId" \
+        --output text \
+        --profile "$AWS_PROFILE" \
+        --region "$AWS_REGION" 2>/dev/null)
+fi
+
+if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
+    echo "❌ Could not find any Deep Learning AMI. Using known working AMI as fallback..."
+    # Updated fallback to a more recent AMI with CUDA 12.x (update this periodically)
+    # Note: This should be updated to a real AMI ID from your region
+    AMI_ID="ami-0c2b8ca1dad447f8a"  # TODO: Update to Ubuntu 22.04 + CUDA 12.x AMI
+    echo "⚠️  WARNING: Using old fallback AMI. Please update AMI_ID with latest Ubuntu 22.04 AMI."
 fi
 
 echo "✅ Using GPU-ready AMI: $AMI_ID"
-echo "   This AMI includes: NVIDIA drivers, CUDA, Docker GPU support"
+echo "   This AMI includes: NVIDIA drivers 570.x, CUDA 12.x, Docker GPU support, Ubuntu 22.04"
 
 # Create security group if it doesn't exist
 echo "🔒 Setting up security group..."
@@ -138,7 +154,7 @@ EXISTING_INSTANCE=$(aws ec2 describe-instances \
     --region "$AWS_REGION" 2>/dev/null || echo "None")
 
 if [ "$EXISTING_INSTANCE" != "None" ] && [ "$EXISTING_INSTANCE" != "null" ]; then
-    echo "⚠️  Instance already running: $EXISTING_INSTANCE"
+    echo "✅ Instance already running: $EXISTING_INSTANCE"
     
     # Get public IP
     PUBLIC_IP=$(aws ec2 describe-instances \
@@ -154,8 +170,51 @@ if [ "$EXISTING_INSTANCE" != "None" ] && [ "$EXISTING_INSTANCE" != "null" ]; the
     exit 0
 fi
 
+# Check for stopped instances to restart
+echo "🔍 Checking for stopped instances to restart..."
+STOPPED_INSTANCE=$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=$INSTANCE_NAME" "Name=instance-state-name,Values=stopped" \
+    --query "Reservations[0].Instances[0].InstanceId" \
+    --output text \
+    --profile "$AWS_PROFILE" \
+    --region "$AWS_REGION" 2>/dev/null || echo "None")
+
+if [ "$STOPPED_INSTANCE" != "None" ] && [ "$STOPPED_INSTANCE" != "null" ]; then
+    echo "🔄 Found stopped instance, restarting: $STOPPED_INSTANCE"
+    
+    # Start the stopped instance
+    aws ec2 start-instances \
+        --instance-ids "$STOPPED_INSTANCE" \
+        --profile "$AWS_PROFILE" \
+        --region "$AWS_REGION" >/dev/null
+    
+    echo "⏳ Waiting for instance to be running..."
+    aws ec2 wait instance-running \
+        --instance-ids "$STOPPED_INSTANCE" \
+        --profile "$AWS_PROFILE" \
+        --region "$AWS_REGION"
+    
+    # Get public IP
+    PUBLIC_IP=$(aws ec2 describe-instances \
+        --instance-ids "$STOPPED_INSTANCE" \
+        --query "Reservations[0].Instances[0].PublicIpAddress" \
+        --output text \
+        --profile "$AWS_PROFILE" \
+        --region "$AWS_REGION")
+    
+    echo ""
+    echo "✅ Stopped instance successfully restarted!"
+    echo "📋 Instance ID: $STOPPED_INSTANCE"
+    echo "🌐 Public IP: $PUBLIC_IP"
+    echo "🔗 Mastra API: http://$PUBLIC_IP:3000"
+    echo "🔗 SSH: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP"
+    echo ""
+    echo "ℹ️  The service should already be configured and ready to use!"
+    exit 0
+fi
+
 # Launch new instance
-echo "🖥️  Launching new instance with 300GB storage..."
+echo "🚀 No stopped instances found, launching fresh instance with 300GB storage..."
 INSTANCE_ID=$(aws ec2 run-instances \
     --image-id "$AMI_ID" \
     --count 1 \

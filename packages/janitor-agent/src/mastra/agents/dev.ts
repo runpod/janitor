@@ -79,6 +79,13 @@ You have access to file system tools:
     c. Construct the **entire new file content** with the addition/modification included.
     d. Use \`edit_file\` with the complete new content to overwrite the original file.
 
+## Known Issues: RunPod SDK
+
+If you see "test_input.json not found, exiting" in Docker logs:
+- This indicates the test_input.json file exists in the repository but is not copied into the Docker image
+- Solution: Update the Dockerfile to include "COPY test_input.json /" or "COPY . /"
+- This is required for RunPod SDK automated testing to work properly
+
 ## Output format
 
 When your task is complete, you MUST provide structured and concise output ONLY IN JSON, nothing else.

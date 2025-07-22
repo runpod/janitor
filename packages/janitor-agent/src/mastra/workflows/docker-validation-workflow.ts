@@ -5,6 +5,7 @@ import { z } from "zod";
 // Import our Docker and Git tools functions
 import {
 	buildDockerImage,
+	cleanupContainer,
 	findDockerfiles,
 	getContainerLogs,
 	isCudaDockerfile,
@@ -293,7 +294,7 @@ const dockerLogsStep = createStep({
 		console.log("----------------------------------------------------------------\n");
 
 		const containerId = inputData.containerId;
-		const waitTime = 1000; // Shorter wait time for testing
+		const waitTime = 3000; // Wait 3 seconds for container to run and generate logs
 		const tail = 100;
 
 		console.log(`Waiting ${waitTime}ms before checking logs for container: ${containerId}`);
@@ -305,17 +306,45 @@ const dockerLogsStep = createStep({
 			// Get container logs
 			const logsResult = await getContainerLogs(containerId, tail, "5s");
 
+			let logs = "";
+			let lineCount = 0;
+			let logsError = null;
+
 			if (!logsResult.success) {
+				console.warn(`⚠️  Failed to retrieve container logs: ${logsResult.error}`);
+				logsError = logsResult.error || "Failed to retrieve container logs";
+				logs = "Failed to retrieve logs";
+			} else {
+				logs = logsResult.logs || "";
+				lineCount = logs.split("\n").filter(line => line.trim() !== "").length;
+				console.log(`📝 Retrieved ${lineCount} lines of container logs`);
+			}
+
+			// IMPORTANT: Always cleanup the container after getting logs
+			console.log(`🧹 Cleaning up container: ${containerId}`);
+			try {
+				const cleanupResult = await cleanupContainer(containerId);
+
+				if (cleanupResult.success) {
+					console.log(`✅ Container ${containerId} cleaned up successfully`);
+				} else {
+					console.warn(`⚠️  Container cleanup warning: ${cleanupResult.error}`);
+				}
+			} catch (cleanupError) {
+				console.warn(
+					`⚠️  Container cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+				);
+				// Don't fail the whole step just because cleanup failed
+			}
+
+			// Return logs result (success if we got logs, even if cleanup had issues)
+			if (logsError) {
 				return {
 					success: false,
-					error: logsResult.error || "Failed to retrieve container logs",
+					error: logsError,
 				};
 			}
 
-			const logs = logsResult.logs || "";
-			const lineCount = logs.split("\n").filter(line => line.trim() !== "").length;
-
-			// Always succeed if we could retrieve logs, even if they're empty
 			return {
 				success: true,
 				logs,
@@ -325,6 +354,15 @@ const dockerLogsStep = createStep({
 			console.error(
 				`Error retrieving container logs: ${error instanceof Error ? error.message : String(error)}`
 			);
+
+			// Try to cleanup even if logs failed
+			try {
+				console.log(`🧹 Attempting cleanup after error for container: ${containerId}`);
+				await cleanupContainer(containerId);
+			} catch (cleanupError) {
+				console.warn(`⚠️  Cleanup after error failed: ${cleanupError}`);
+			}
+
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : String(error),
@@ -384,8 +422,8 @@ const generateReportStep = createStep({
 			errors.logs = logsResult.error.split("\n").slice(-8).join("\n");
 		}
 
-		// Determine overall success
-		const hasErrors = Object.keys(errors).length > 0;
+		// Determine technical success (all steps completed)
+		const hasStepErrors = Object.keys(errors).length > 0;
 		let allStepsCompleted = false;
 
 		if (wasSkipped) {
@@ -402,7 +440,87 @@ const generateReportStep = createStep({
 				logsResult.success;
 		}
 
-		const overallSuccess = !hasErrors && allStepsCompleted;
+		// NEW: Analyze container logs to determine if container ran successfully
+		let containerRanSuccessfully = false; // Start with false, require positive proof of success
+		const logAnalysisErrors: string[] = [];
+
+		if (!wasSkipped && logsResult?.logs) {
+			const logs = logsResult.logs;
+			console.log(`🔍 Analyzing container logs for success indicators...`);
+			console.log(`📝 Container logs (${logs.length} chars):`);
+			console.log(`"${logs.substring(0, 500)}"`);
+
+			const logLines = logs.split("\n").filter(line => line.trim() !== "");
+			console.log(`📊 Log lines count: ${logLines.length}`);
+
+			// FIRST: Check for clear SUCCESS indicators
+			const hasRunPodSuccess =
+				logs.includes("completed successfully") ||
+				logs.includes("Job result:") ||
+				logs.includes("Local testing complete");
+
+			const hasServerSuccess =
+				logs.includes("server") ||
+				logs.includes("listening") ||
+				logs.includes("ready") ||
+				logs.includes("Server running");
+
+			const hasGeneralSuccess =
+				logs.includes("started") || logs.includes("running") || logLines.length > 8; // More logs usually indicate continued operation
+
+			if (hasRunPodSuccess) {
+				containerRanSuccessfully = true;
+				console.log(`✅ Found RunPod success indicators`);
+			} else if (hasServerSuccess) {
+				containerRanSuccessfully = true;
+				console.log(`✅ Found server success indicators`);
+			} else if (hasGeneralSuccess) {
+				containerRanSuccessfully = true;
+				console.log(`✅ Found general success indicators`);
+			}
+
+			// SECOND: Check for ERROR indicators that override success
+			if (logs.includes("ERROR") || logs.includes("FATAL")) {
+				containerRanSuccessfully = false;
+				logAnalysisErrors.push("Container had ERROR or FATAL messages");
+				console.log(`❌ Found ERROR/FATAL indicators in logs`);
+			}
+
+			// THIRD: Check for specific failure patterns
+			if (logs.includes("WARN") && logs.includes("not found")) {
+				containerRanSuccessfully = false;
+				logAnalysisErrors.push("Container missing required files or configuration");
+				console.log(`❌ Found warning about missing files`);
+			}
+
+			// FOURTH: Check for too few logs (likely immediate crash)
+			if (logLines.length <= 2) {
+				containerRanSuccessfully = false;
+				logAnalysisErrors.push("Container produced minimal logs (likely immediate exit)");
+				console.log(`❌ Too few log lines (${logLines.length})`);
+			}
+
+			// FINAL: If no success indicators found
+			if (!containerRanSuccessfully && logAnalysisErrors.length === 0) {
+				logAnalysisErrors.push("No clear success indicators found in container logs");
+				console.log(`❌ No success indicators found`);
+			}
+
+			console.log(
+				`📊 Container log analysis: ${containerRanSuccessfully ? "✅ Success" : "❌ Failed"}`
+			);
+			if (logAnalysisErrors.length > 0) {
+				console.log(`⚠️  Log analysis issues: ${logAnalysisErrors.join(", ")}`);
+			}
+		} else {
+			console.log(
+				`⚠️  No logs to analyze (wasSkipped: ${wasSkipped}, logs available: ${!!logsResult?.logs})`
+			);
+		}
+
+		// Overall success requires both technical success AND container running successfully
+		const overallSuccess =
+			!hasStepErrors && allStepsCompleted && (wasSkipped || containerRanSuccessfully);
 
 		// Generate report
 		let report = `# Docker Validation Report
@@ -413,18 +531,29 @@ const generateReportStep = createStep({
 			report += `
 * validation: ⚠️ partial (build-only)
 * reason: ${skipReason}`;
+		} else if (!containerRanSuccessfully) {
+			report += `
+* container_status: ❌ failed to run successfully
+* issues: ${logAnalysisErrors.join(", ")}`;
+
+			// Include actual container logs for janitor agent to analyze
+			if (logsResult?.logs) {
+				report += `
+* container_logs:
+${logsResult.logs}`;
+			}
 		}
 
-		if (!overallSuccess && hasErrors) {
+		if (!overallSuccess && hasStepErrors) {
 			report += `
-* errors:
+* step_errors:
 ${Object.entries(errors)
 	.map(([step, error]) => `  - ${step}: ${error}`)
 	.join("\n")}`;
 		}
 
 		return {
-			success: true,
+			success: overallSuccess,
 			report,
 		};
 	},

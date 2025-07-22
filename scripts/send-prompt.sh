@@ -135,11 +135,7 @@ if [ -n "$RUN_ID" ]; then
     echo ""
     echo "📊 To check validation results:"
     echo "   make query-results RUN_ID=$RUN_ID"
-    echo ""
-    echo "🔗 Or check in Supabase:"
-    echo "   https://app.supabase.com/project/your-project/editor"
 fi
 
 echo "⏳ Validation is running in the background..."
-echo "📊 Check the Mastra server logs for progress:"
-echo "   ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo journalctl -u janitor-mastra -f'" 
+echo "📊 Check logs with: make logs" 

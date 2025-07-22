@@ -10,9 +10,9 @@ async function main() {
 
 	try {
 		console.log("\n----------------------------------------------------------------");
+		console.log("🧪  Testing Janitor Agent");
 		console.log("----------------------------------------------------------------");
-		console.log("🚧  preparing test environment");
-		console.log("----------------------------------------------------------------");
+		console.log(`Repository: ${repoName}`);
 		console.log("----------------------------------------------------------------\n");
 
 		// Define the repository path using the helper function
@@ -37,31 +37,25 @@ async function main() {
 
 		const prompt = `Please validate the repository ${repoName}`;
 
-		console.log("\n----------------------------------------------------------------");
-		console.log("----------------------------------------------------------------");
-		console.log(`👤  prompt: ${prompt}`);
-		console.log("----------------------------------------------------------------");
-		console.log("----------------------------------------------------------------\n");
+		console.log(`\nPrompt: ${prompt}`);
+		console.log("Calling agent...\n");
 
+		// Test with normal agent execution (allows tool calls)
 		const response = await agent.generate(prompt, {
 			maxSteps: 20,
 		});
 
-		console.log("\n----------------------------------------------------------------");
-		console.log("----------------------------------------------------------------");
-		console.log("🤖  janitor");
+		console.log("Agent response:");
+		console.log("---------------");
 		console.log(response.text);
-		console.log("----------------------------------------------------------------");
-		// console.log(JSON.stringify(response.response.messages, null, 2));
-		console.log("----------------------------------------------------------------\n");
 	} catch (error) {
-		console.error("Error running E2E test:", error);
+		console.error("Error running test:", error);
 	}
 }
 
 main()
 	.then(() => {
-		console.log("Test finished");
+		console.log("\nTest finished");
 		process.exit(0);
 	})
 	.catch(error => {

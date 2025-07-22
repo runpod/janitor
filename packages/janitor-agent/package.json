@@ -11,6 +11,10 @@
     "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",
     "test:janitor:validate": "tsx tests/test-janitor-validate.ts",
     "test:janitor:add-feature": "tsx tests/test-janitor-add-feature.ts",
+    "test:server": "tsx tests/test-server-structured-output.ts",
+    "test:analyzer": "tsx tests/test-analyzer-agent.ts",
+    "test:dev": "tsx tests/test-dev.ts",
+    "test:pr-creator": "tsx tests/test-pr-creator.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

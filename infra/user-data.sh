@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# User Data Script for Simplified Janitor GPU Instance (Deep Learning AMI)
-# This script bootstraps a Deep Learning AMI that already has GPU drivers and CUDA installed
+# User Data Script for Simplified Janitor GPU Instance (Deep Learning Base AMI)
+# This script bootstraps a Deep Learning Base AMI (Ubuntu 22.04) with GPU drivers and CUDA 12.x installed
 
 set -e
 
 # Log all output to CloudWatch logs (optional but helpful for debugging)
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-echo "Starting Janitor GPU instance bootstrap on Deep Learning AMI..."
+echo "Starting Janitor GPU instance bootstrap on Deep Learning Base AMI (Ubuntu 22.04 + CUDA 12.x)..."
 
 # Update system
 apt-get update -y
@@ -19,7 +19,7 @@ nvidia-smi
 echo "GPU verification complete!"
 
 echo "Verifying Docker GPU support..."
-docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi || echo "Docker GPU test completed"
+docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi || echo "Docker GPU test completed"
 
 # Install Node.js (using NodeSource repository for latest LTS)
 echo "Installing Node.js..."

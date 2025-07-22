@@ -34,20 +34,41 @@ npm run dev  # Opens Mastra interface at http://localhost:4111
 
 ### Environment Configuration
 
-Create `.env` file in this directory with:
+**First, copy the environment file from the project root:**
+
+```bash
+# Copy the main project's .env file as your starting point
+cp ../../.env .env
+
+# OR if you don't have the root .env file set up yet:
+cp ../../.env.example .env
+```
+
+The agent requires these environment variables in `.env`:
 
 ```bash
 # Core API Keys (required)
 ANTHROPIC_API_KEY=your_anthropic_key
 GITHUB_PERSONAL_ACCESS_TOKEN=your_github_token
 
+# Supabase Configuration (required for database storage)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_DB_PASSWORD=your-db-password
+
+# AWS Configuration (for deployment)
+AWS_PROFILE=janitor
+AWS_REGION=us-east-1
+
 # Optional: Debug settings
 MASTRA_LOG_LEVEL=debug
 MASTRA_MODEL_PROVIDER=anthropic
 ```
 
-> **Note**: For AWS deployment variables, see the main project
-> [environment setup](../../README.md#environment-setup).
+> **Important**: Always start by copying the root `.env` file since it contains all the necessary
+> variables. The agent needs the same environment as the main project for database access and
+> deployment integration.
 
 ## 🧪 Testing and Development
 

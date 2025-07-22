@@ -3,7 +3,7 @@ import { config } from "dotenv";
 // Load environment variables
 config();
 
-// Type definitions for validation results
+// Enhanced type definitions for validation results with prompt tracking
 export interface ValidationResult {
 	id?: string;
 	run_id: string;
@@ -12,6 +12,8 @@ export interface ValidationResult {
 	validation_status: "success" | "failed" | "running";
 	results_json: any;
 	created_at?: string;
+	original_prompt?: string;
+	repository_prompt?: string;
 }
 
 // Supabase REST API configuration
@@ -22,7 +24,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 	throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
 }
 
-const REST_API_URL = `${SUPABASE_URL}/rest/v1`;
+const REST_API_URL = `${SUPABASE_URL!}/rest/v1`;
 
 // Helper function to make REST API requests
 async function supabaseRequest(endpoint: string, options: RequestInit = {}) {
@@ -30,10 +32,10 @@ async function supabaseRequest(endpoint: string, options: RequestInit = {}) {
 	const response = await fetch(url, {
 		...options,
 		headers: {
-			'Content-Type': 'application/json',
-			'apikey': SUPABASE_SERVICE_KEY,
-			'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-			'Prefer': 'return=representation',
+			"Content-Type": "application/json",
+			apikey: SUPABASE_SERVICE_KEY!,
+			Authorization: `Bearer ${SUPABASE_SERVICE_KEY!}`,
+			Prefer: "return=representation",
 			...options.headers,
 		},
 	});
@@ -46,7 +48,7 @@ async function supabaseRequest(endpoint: string, options: RequestInit = {}) {
 	return response.json();
 }
 
-// Store validation result using REST API
+// Enhanced store validation result with prompt context
 export async function storeValidationResult(result: ValidationResult) {
 	try {
 		const payload = {
@@ -55,14 +57,16 @@ export async function storeValidationResult(result: ValidationResult) {
 			organization: result.organization,
 			validation_status: result.validation_status,
 			results_json: result.results_json,
+			original_prompt: result.original_prompt,
+			repository_prompt: result.repository_prompt,
 		};
 
-		const [insertedResult] = await supabaseRequest('/validation_results', {
-			method: 'POST',
+		const [insertedResult] = await supabaseRequest("/validation_results", {
+			method: "POST",
 			body: JSON.stringify(payload),
 		});
 
-		console.log("✅ Validation result stored successfully:", insertedResult.id);
+		console.log("✅ Enhanced validation result stored successfully:", insertedResult.id);
 		return insertedResult;
 	} catch (error) {
 		console.error("Failed to store validation result:", error);
@@ -70,7 +74,7 @@ export async function storeValidationResult(result: ValidationResult) {
 	}
 }
 
-// Update validation result status using REST API
+// Enhanced update validation result with prompt context
 export async function updateValidationResult(
 	runId: string,
 	repositoryName: string,
@@ -80,16 +84,18 @@ export async function updateValidationResult(
 		const payload: any = {};
 		if (updates.validation_status) payload.validation_status = updates.validation_status;
 		if (updates.results_json) payload.results_json = updates.results_json;
+		if (updates.original_prompt) payload.original_prompt = updates.original_prompt;
+		if (updates.repository_prompt) payload.repository_prompt = updates.repository_prompt;
 
 		const updatedResults = await supabaseRequest(
 			`/validation_results?run_id=eq.${runId}&repository_name=eq.${repositoryName}`,
 			{
-				method: 'PATCH',
+				method: "PATCH",
 				body: JSON.stringify(payload),
 			}
 		);
 
-		console.log("✅ Validation result updated successfully");
+		console.log("✅ Enhanced validation result updated successfully");
 		return updatedResults[0];
 	} catch (error) {
 		console.error("Failed to update validation result:", error);

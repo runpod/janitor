@@ -8,6 +8,13 @@
       "when": 1753103322951,
       "tag": "0000_parallel_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1753103400000,
+      "tag": "0001_add_prompt_columns",
+      "breakpoints": true
     }
   ]
 }

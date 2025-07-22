@@ -488,14 +488,97 @@ export const runDockerContainer = async (
 		// Run the container with streaming logs
 		const runResult = await spawnWithLogs("docker", runArgs);
 
+		// Get the container ID from the output (even if command failed)
+		const containerId = runResult.output ? runResult.output.trim() : "";
+
 		if (!runResult.success) {
-			console.error(`Docker run failed: ${runResult.error}`);
+			console.error(`Docker run command failed: ${runResult.error}`);
+			if (containerId) {
+				console.log(`Container ID was returned: ${containerId}, but command failed`);
+				// Check if container actually exists and its status
+				try {
+					const inspectResult = await spawnWithLogs("docker", [
+						"inspect",
+						containerId,
+						"--format",
+						"{{.State.Status}}",
+					]);
+					if (inspectResult.success) {
+						const status = inspectResult.output.trim();
+						console.log(`Container status: ${status}`);
+						if (status === "exited") {
+							console.error(
+								`❌ Container ${containerId} exited immediately after start`
+							);
+						}
+					}
+				} catch (e) {
+					console.log(`Could not inspect container: ${e}`);
+				}
+			}
 			throw new Error(`Docker run failed: ${runResult.error}`);
 		}
 
-		// Get the container ID from the output
-		const containerId = runResult.output ? runResult.output.trim() : "";
-		console.log(`Successfully started Docker container with ID: ${containerId}`);
+		if (!containerId) {
+			console.error(`Docker run succeeded but no container ID returned`);
+			throw new Error(`Docker run succeeded but no container ID returned`);
+		}
+
+		console.log(`Docker run command completed with container ID: ${containerId}`);
+
+		// Verify the container is actually running (not exited immediately)
+		console.log(`🔍 Verifying container is running...`);
+		try {
+			const inspectResult = await spawnWithLogs("docker", [
+				"inspect",
+				containerId,
+				"--format",
+				"{{.State.Status}}",
+			]);
+
+			if (!inspectResult.success) {
+				console.error(`❌ Failed to inspect container ${containerId}`);
+				throw new Error(`Failed to inspect container: ${inspectResult.error}`);
+			}
+
+			const status = inspectResult.output.trim();
+			console.log(`📊 Container status: ${status}`);
+
+			if (status === "exited") {
+				// Container exited immediately - this is a failure
+				console.error(`❌ Container ${containerId} exited immediately after start`);
+
+				// Get exit code for more details
+				try {
+					const exitCodeResult = await spawnWithLogs("docker", [
+						"inspect",
+						containerId,
+						"--format",
+						"{{.State.ExitCode}}",
+					]);
+					if (exitCodeResult.success) {
+						const exitCode = exitCodeResult.output.trim();
+						console.error(`❌ Container exit code: ${exitCode}`);
+					}
+				} catch (e) {
+					console.log(`Could not get exit code: ${e}`);
+				}
+
+				throw new Error(`Container exited immediately after start (status: ${status})`);
+			}
+
+			if (status !== "running") {
+				console.error(`❌ Container is not running (status: ${status})`);
+				throw new Error(`Container is not running (status: ${status})`);
+			}
+
+			console.log(`✅ Container ${containerId} is running successfully`);
+		} catch (error) {
+			console.error(
+				`❌ Container verification failed: ${error instanceof Error ? error.message : String(error)}`
+			);
+			throw error;
+		}
 
 		return {
 			success: true,

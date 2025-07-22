@@ -34,15 +34,55 @@ start:
 
 .PHONY: stop
 stop:
-	@echo "🛑 Stopping GPU instance to save costs..."
+	@echo "🗑️  Terminating GPU instance (complete cleanup)..."
 	@chmod +x scripts/stop-instance.sh
 	@./scripts/stop-instance.sh
+
+.PHONY: pause
+pause:
+	@echo "⏸️  Pausing GPU instance (preserve for restart)..."
+	@chmod +x scripts/pause-instance.sh
+	@./scripts/pause-instance.sh
 
 .PHONY: deploy-code
 deploy-code:
 	@echo "📦 Updating code on existing instance (not needed for fresh instances)..."
 	@chmod +x scripts/deploy-code.sh
 	@./scripts/deploy-code.sh
+
+.PHONY: ssh
+ssh:
+	@echo "🔗 Connecting to GPU instance via SSH..."
+	@if [ -f ".env" ]; then \
+		source .env && \
+		INSTANCE_ID=$$(aws ec2 describe-instances \
+			--filters "Name=tag:Name,Values=janitor-gpu-instance" "Name=instance-state-name,Values=running" \
+			--query "Reservations[0].Instances[0].InstanceId" \
+			--output text \
+			--profile "$$AWS_PROFILE" \
+			--region "$$AWS_REGION" 2>/dev/null || echo "None"); \
+		if [ "$$INSTANCE_ID" != "None" ] && [ "$$INSTANCE_ID" != "null" ]; then \
+			PUBLIC_IP=$$(aws ec2 describe-instances \
+				--instance-ids "$$INSTANCE_ID" \
+				--query "Reservations[0].Instances[0].PublicIpAddress" \
+				--output text \
+				--profile "$$AWS_PROFILE" \
+				--region "$$AWS_REGION"); \
+			echo "📋 Instance: $$INSTANCE_ID"; \
+			echo "🌐 IP: $$PUBLIC_IP"; \
+			echo "🔑 Key: $$SSH_KEY_PATH"; \
+			echo ""; \
+			echo "🚀 Connecting to ubuntu@$$PUBLIC_IP..."; \
+			echo "💡 Tip: Run 'nvidia-smi' or 'docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi' to test GPU"; \
+			echo ""; \
+			ssh -i "$$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$$PUBLIC_IP"; \
+		else \
+			echo "❌ No running instance found"; \
+			echo "💡 Start one with: make start"; \
+		fi; \
+	else \
+		echo "❌ .env file not found"; \
+	fi
 
 # =============================================================================
 # Monitoring Commands
@@ -138,29 +178,71 @@ restart:
 
 .PHONY: prompt
 prompt:
-	@echo "📤 Sending validation prompt to Mastra server..."
+	@echo "📤 Sending prompt to Mastra server..."
 ifdef FILE
-	@echo "📄 Using prompt from file: $(FILE)"
-	@if [ ! -f "$(FILE)" ]; then \
-		echo "❌ Error: File $(FILE) not found"; \
+	@echo "📄 Resolving prompt file: $(FILE)"
+	@# Try direct path first
+	@if [ -f "$(FILE)" ]; then \
+		echo "✅ Found: $(FILE)"; \
+		chmod +x scripts/send-prompt.sh; \
+		./scripts/send-prompt.sh "$$(cat $(FILE))"; \
+	elif [ -f "prompts/$(FILE)" ]; then \
+		echo "✅ Found: prompts/$(FILE)"; \
+		chmod +x scripts/send-prompt.sh; \
+		./scripts/send-prompt.sh "$$(cat prompts/$(FILE))"; \
+	elif [ -f "prompts/$(FILE).md" ]; then \
+		echo "✅ Found: prompts/$(FILE).md"; \
+		chmod +x scripts/send-prompt.sh; \
+		./scripts/send-prompt.sh "$$(cat prompts/$(FILE).md)"; \
+	else \
+		echo "❌ Error: Prompt file not found"; \
+		echo ""; \
+		echo "Searched locations:"; \
+		echo "  - $(FILE)"; \
+		echo "  - prompts/$(FILE)"; \
+		echo "  - prompts/$(FILE).md"; \
+		echo ""; \
+		echo "💡 Create a prompt file:"; \
+		echo "  cat > prompts/$(FILE).md << 'EOF'"; \
+		echo "  # PROMPT"; \
+		echo "  Add your detailed instructions here"; \
+		echo "  "; \
+		echo "  # REPOS"; \
+		echo "  - worker-basic"; \
+		echo "  - worker-template"; \
+		echo "  EOF"; \
+		echo ""; \
+		echo "📁 Available prompt files:"; \
+		if [ -d "prompts" ]; then \
+			ls -la prompts/ 2>/dev/null | grep -E '\.(md|txt)$$' || echo "  (no .md or .txt files found)"; \
+		else \
+			echo "  (prompts/ folder does not exist)"; \
+		fi; \
 		exit 1; \
 	fi
-	@chmod +x scripts/send-prompt.sh
-	@./scripts/send-prompt.sh "$$(cat $(FILE))"
 else ifndef PROMPT
 	@echo "❌ Error: PROMPT parameter or FILE parameter required"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make prompt PROMPT=\"validate RunPod/worker-basic\""
-	@echo "  make prompt FILE=\"prompt.txt\""
+	@echo "  make prompt FILE=\"validate\"              # Uses prompts/validate.md"
+	@echo "  make prompt FILE=\"prompts/custom.md\"     # Direct path"
 	@echo ""
-	@echo "Multiline prompts (use \\\\n for line breaks):"
-	@echo "  make prompt PROMPT=\"validate these repos:\\\\nRunPod/worker-basic\\\\nRunPod/worker-template\\\""
+	@echo "🚀 Markdown prompts:"
+	@echo "  make prompt FILE=validate                  # Uses default validation prompt"
 	@echo ""
-	@echo "File-based prompts:"
-	@echo "  echo \"validate these repos:\" > prompt.txt"
-	@echo "  echo \"RunPod/worker-basic\" >> prompt.txt"
-	@echo "  make prompt FILE=prompt.txt"
+	@echo "📁 Create custom prompts in markdown:"
+	@echo "  cat > prompts/my-task.md << 'EOF'"
+	@echo "  # PROMPT"
+	@echo "  Add comprehensive logging with structured output"
+	@echo "  "
+	@echo "  # REPOS"
+	@echo "  - worker-basic"
+	@echo "  - worker-template"
+	@echo "  EOF"
+	@echo ""
+	@echo "Legacy format (still supported):"
+	@echo "  make prompt PROMPT=\"validate worker-basic, worker-template\""
 	@exit 1
 else
 	@chmod +x scripts/send-prompt.sh
@@ -208,9 +290,11 @@ help:
 	@echo "  make query-results REPO=worker-basic                    - Check repository results"
 	@echo ""
 	@echo "Instance management:"
-	@echo "  make start              - Start the GPU instance"
-	@echo "  make stop               - Stop instance to save costs"
+	@echo "  make start              - Start GPU instance (reuses stopped or creates new)"
+	@echo "  make stop               - Terminate instance (complete cleanup, no costs)"
+	@echo "  make pause              - Pause instance (preserve for quick restart)"
 	@echo "  make deploy-code        - Deploy/update code on instance"
+	@echo "  make ssh                - SSH into running instance for debugging"
 	@echo ""
 	@echo "Monitoring commands:"
 	@echo "  make status             - Check service status"

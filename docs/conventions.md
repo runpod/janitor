@@ -61,9 +61,10 @@ GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_DB_PASSWORD=your-db-password
 
 # AWS Configuration (Simplified)
-AWS_PROFILE=your-profile
+AWS_PROFILE=janitor
 AWS_REGION=us-east-1
 SSH_KEY_NAME=janitor-key
 SSH_KEY_PATH=~/.ssh/janitor-key
@@ -73,9 +74,9 @@ SSH_KEY_PATH=~/.ssh/janitor-key
 
 - AWS CLI configured with appropriate permissions
 - Node.js and npm/pnpm installed
-- Terraform installed
 - Docker installed (for local testing)
 - SSH key pair for AWS instances
+- Supabase project created with database password
 
 ## Deployment and Operations
 
@@ -85,8 +86,8 @@ The Makefile provides the primary interface for all operations:
 
 ```bash
 # Setup (one-time)
-make setup-supabase            # Set up Supabase database
-make start            # Launch GPU instance
+make setup-supabase            # Set up Supabase database with Drizzle
+make start                     # Launch GPU instance
 make deploy-code               # Deploy janitor code to instance
 
 # Daily usage
@@ -125,16 +126,20 @@ make test-local                # Run local tests
 
 ```bash
 # 1. Launch instance
-make launch-instance ENV=dev
+make start
 
 # 2. Monitor logs (real-time)
-make logs-all ENV=dev
+make logs
 
-# 3. Get validation results when ready
-make query-runs ENV=dev
+# 3. Send validation requests
+make prompt PROMPT="validate worker-basic"
+make prompt FILE=validate
 
-# 4. Clean up
-make kill-instances ENV=dev
+# 4. Get validation results
+make query-results
+
+# 5. Clean up when done
+make stop
 ```
 
 ## Agent Architecture
@@ -278,8 +283,8 @@ const runDockerContainer = (imageTag, hasGpu, isCudaImage) => {
 **EC2 Instances:**
 
 - Development: t3.micro (no GPU)
-- Production: GPU-enabled instances (p3, g4dn series)
-- Custom AMIs with pre-installed dependencies
+- Production: GPU-enabled instances (g5, g4dn, p3 series)
+- Deep Learning Base AMI (Ubuntu 22.04) with CUDA 12.x pre-installed
 
 **CloudWatch Logging:**
 
@@ -295,10 +300,10 @@ const runDockerContainer = (imageTag, hasGpu, isCudaImage) => {
 
 **Database Integration:**
 
-- PostgreSQL database for validation results and reports
-- Automatic schema migration and management
+- Supabase (PostgreSQL) for validation results and reports
+- Schema managed exclusively through Drizzle ORM
+- Automatic migration and versioning via Drizzle Kit
 - Real-time query capabilities for monitoring
-- Database credentials managed via AWS Secrets Manager
 
 ### Terraform Structure
 
@@ -311,15 +316,22 @@ infra/terraform/
 └── outputs.tf             # Infrastructure outputs
 ```
 
-### Custom AMI Building
+### AMI Selection Strategy
 
-Uses Packer to create AMIs with pre-installed dependencies:
+The system automatically selects the latest AWS Deep Learning Base AMI:
 
-```bash
-# Build custom AMI
-cd infra/packer
-packer build gpu-ami.pkr.hcl
-```
+**Primary:** Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)
+
+- CUDA 12.8 (default, with 12.4, 12.5, 12.6 available)
+- NVIDIA Driver 570.x
+- Ubuntu 22.04 with Kernel 6.8
+- Docker and NVIDIA Container Toolkit pre-installed
+
+**Selection Method:**
+
+1. Query latest AMI via SSM parameter (AWS recommended)
+2. Fallback to direct AMI search by name pattern
+3. Final fallback to any Deep Learning AMI
 
 ## Logging and Monitoring
 
@@ -357,16 +369,19 @@ aws logs tail /janitor-runner \
 # Check what instances are running
 make check-instances ENV=dev
 
-# Get SSH connection details
-make ssh-info ENV=dev
-
 # SSH into instance for debugging
-make ssh ENV=dev
+make ssh
 
 # Database operations
-make query-runs ENV=dev        # List recent validation runs
-make query-db ENV=dev REPO=name # Query specific repository results
-make db-connect ENV=dev        # Connect to database directly
+make query-results             # List recent validation runs
+make query-results RUN_ID=id   # Query specific run results
+make query-results REPO=name   # Query specific repository results
+
+# Schema management (use these instead of manual SQL)
+cd packages/janitor-agent
+npm run db:generate            # Generate migration from schema changes
+npm run db:migrate             # Apply migrations to database
+npm run db:studio              # Open Drizzle Studio for inspection
 ```
 
 ## Development Workflow
@@ -379,6 +394,9 @@ make db-connect ENV=dev        # Connect to database directly
 cd packages/janitor-agent
 npm install
 cp .env.example .env  # Configure environment variables
+
+# Apply database schema
+npm run db:migrate
 ```
 
 **Local Testing:**
@@ -516,15 +534,128 @@ return {
 - Configure tokens for repository access only
 - Store tokens securely in environment variables
 
+## Database Schema Management
+
+### Drizzle ORM Integration
+
+**CRITICAL: All database schema changes must be made through Drizzle ORM. Never modify the database schema manually.**
+
+The project uses Drizzle ORM for type-safe database operations and schema management:
+
+```typescript
+// packages/janitor-agent/src/db/schema.ts
+export const validationResults = pgTable(
+    "validation_results",
+    {
+        id: uuid("id").primaryKey().defaultRandom(),
+        run_id: uuid("run_id").notNull(),
+        repository_name: text("repository_name").notNull(),
+        organization: text("organization").notNull(),
+        validation_status: text("validation_status").notNull(),
+        results_json: jsonb("results_json").notNull(),
+        created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+        // Enhanced prompt tracking
+        original_prompt: text("original_prompt"),
+        repository_prompt: text("repository_prompt"),
+    },
+    // ... indexes
+);
+```
+
+### Schema Change Workflow
+
+**Adding/Modifying Columns:**
+
+1. Update the schema in `packages/janitor-agent/src/db/schema.ts`
+2. Generate migration: `npm run db:generate`
+3. Apply migration: `npm run db:migrate`
+4. Update TypeScript interfaces in `src/utils/supabase.ts` if needed
+
+**Example Schema Change:**
+
+```bash
+cd packages/janitor-agent
+
+# 1. Edit src/db/schema.ts
+# 2. Generate migration
+npm run db:generate
+
+# 3. Review generated migration in drizzle/ folder
+# 4. Apply to database
+npm run db:migrate
+```
+
+### Database Commands
+
+```bash
+# Generate migration from schema changes
+npm run db:generate
+
+# Apply pending migrations to database
+npm run db:migrate
+
+# Open Drizzle Studio for database inspection
+npm run db:studio
+```
+
+### Environment Setup for Database
+
+Ensure your `.env` file includes the required Supabase credentials:
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_DB_PASSWORD=your-database-password  # Required for migrations
+```
+
+**Getting Database Password:**
+
+1. Go to Supabase Dashboard → Settings → Database
+2. Find "Database password" section
+3. Copy the password (this is different from service role key)
+
+### Migration Best Practices
+
+- **Never** manually edit migration files in `drizzle/` folder
+- **Always** test migrations on development environment first
+- **Review** generated SQL before applying to production
+- **Backup** important data before schema changes
+- **Version control** all schema changes through Git
+
+### Type Safety
+
+Drizzle provides full TypeScript type safety:
+
+```typescript
+// Automatic type inference from schema
+import { validationResults } from "./src/db/schema.js";
+
+// Type-safe queries
+const result = await db.select().from(validationResults).where(eq(validationResults.run_id, runId));
+// result is automatically typed based on schema
+```
+
 ## Common Issues and Solutions
 
 ### Instance Management
 
 **Issue**: Instances left running and incurring costs.
-**Solution**: Always use `make kill-instances ENV=dev` after testing.
+**Solution**: Always use `make stop` after testing.
 
 **Issue**: SSH key not found.
 **Solution**: Set `SSH_KEY_PATH` in `.env` or use default `~/.ssh/janitor-key`.
+
+### Database Schema Issues
+
+**Issue**: Database schema out of sync with code.
+**Solution**: Run `npm run db:migrate` in `packages/janitor-agent/` to apply pending migrations.
+
+**Issue**: Missing database password for migrations.
+**Solution**: Add `SUPABASE_DB_PASSWORD` to `.env` (get from Supabase Dashboard → Settings → Database).
+
+**Issue**: Migration fails with "schema cache" error.
+**Solution**: Ensure Supabase project is running and credentials are correct. Check network connectivity.
 
 ### Logging
 
@@ -541,6 +672,49 @@ return {
 
 **Issue**: Container execution timeouts.
 **Solution**: Adjust timeout values in Docker execution commands.
+
+## Project Replication Guide
+
+To replicate this project in a new environment:
+
+### 1. Supabase Setup
+
+```bash
+# Create new Supabase project at https://app.supabase.com
+# Copy URL, anon key, service role key, and database password to .env
+```
+
+### 2. Database Schema Setup
+
+```bash
+cd packages/janitor-agent
+npm install
+npm run db:migrate  # Apply all migrations to create tables
+```
+
+### 3. AWS Setup
+
+```bash
+# Configure AWS CLI with appropriate permissions
+aws configure --profile janitor
+
+# Create SSH key pair
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/janitor-key
+aws ec2 import-key-pair --key-name janitor-key --public-key-material fileb://~/.ssh/janitor-key.pub
+```
+
+### 4. Launch Instance
+
+```bash
+make start  # This will bootstrap the instance with all dependencies
+```
+
+### 5. Verify Setup
+
+```bash
+make prompt PROMPT="validate worker-basic"  # Test the system
+make query-results  # Check results in database
+```
 
 ## Future Enhancements
 
@@ -631,10 +805,11 @@ This document should serve as the primary reference for working with the Janitor
 
 Key principles:
 
-1. **Infrastructure as Code**: All AWS resources managed via Terraform
+1. **Database Schema as Code**: All database changes managed via Drizzle ORM
 2. **GPU-Aware Validation**: Smart handling of CUDA vs non-CUDA workloads
 3. **Clean Separation**: Packages for different concerns (agent, infrastructure)
 4. **Operational Simplicity**: Single Makefile interface for all operations
 5. **Cost Awareness**: Automatic cleanup and monitoring
+6. **Type Safety**: Full TypeScript integration with database schema
 
 Remember to always clean up AWS resources after testing and follow the established patterns for consistency and maintainability.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Stop GPU Instance Script for Janitor Agent
-# Use this to save costs when not actively validating repositories
+# Terminate GPU Instance Script for Janitor Agent
+# Use this to completely destroy the instance and save costs
 
 set -e
 
@@ -20,59 +20,69 @@ if [ -z "$AWS_PROFILE" ] || [ -z "$AWS_REGION" ]; then
     exit 1
 fi
 
-echo "🛑 Stopping Janitor GPU instance..."
+echo "🗑️  Terminating Janitor GPU instance (complete cleanup)..."
 
 INSTANCE_NAME="janitor-gpu-instance"
 
-# Find the running instance
-echo "🔍 Finding running instance..."
+# Find any instance (running or stopped)
+echo "🔍 Finding instance to terminate..."
 INSTANCE_ID=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=$INSTANCE_NAME" "Name=instance-state-name,Values=running" \
+    --filters "Name=tag:Name,Values=$INSTANCE_NAME" "Name=instance-state-name,Values=running,stopped,stopping" \
     --query "Reservations[0].Instances[0].InstanceId" \
     --output text \
     --profile "$AWS_PROFILE" \
     --region "$AWS_REGION" 2>/dev/null || echo "None")
 
 if [ "$INSTANCE_ID" = "None" ] || [ "$INSTANCE_ID" = "null" ]; then
-    echo "ℹ️  No running instance found with name: $INSTANCE_NAME"
+    echo "ℹ️  No instances found to terminate."
     
-    # Check for stopped instances
-    STOPPED_INSTANCE=$(aws ec2 describe-instances \
-        --filters "Name=tag:Name,Values=$INSTANCE_NAME" "Name=instance-state-name,Values=stopped" \
+    # Check for already terminated instances
+    TERMINATED_INSTANCE=$(aws ec2 describe-instances \
+        --filters "Name=tag:Name,Values=$INSTANCE_NAME" "Name=instance-state-name,Values=terminated" \
         --query "Reservations[0].Instances[0].InstanceId" \
         --output text \
         --profile "$AWS_PROFILE" \
         --region "$AWS_REGION" 2>/dev/null || echo "None")
     
-    if [ "$STOPPED_INSTANCE" != "None" ] && [ "$STOPPED_INSTANCE" != "null" ]; then
-        echo "ℹ️  Instance is already stopped: $STOPPED_INSTANCE"
+    if [ "$TERMINATED_INSTANCE" != "None" ] && [ "$TERMINATED_INSTANCE" != "null" ]; then
+        echo "ℹ️  Previous instance was already terminated: $TERMINATED_INSTANCE"
     else
-        echo "ℹ️  No instances found. Use 'make start' to create one."
+        echo "ℹ️  No instances exist. Use 'make start' to create one."
     fi
     exit 0
 fi
 
-echo "📋 Found running instance: $INSTANCE_ID"
+echo "📋 Found instance to terminate: $INSTANCE_ID"
 
-# Get current public IP before stopping
+# Get current state and IP before terminating
+CURRENT_STATE=$(aws ec2 describe-instances \
+    --instance-ids "$INSTANCE_ID" \
+    --query "Reservations[0].Instances[0].State.Name" \
+    --output text \
+    --profile "$AWS_PROFILE" \
+    --region "$AWS_REGION")
+
 PUBLIC_IP=$(aws ec2 describe-instances \
     --instance-ids "$INSTANCE_ID" \
     --query "Reservations[0].Instances[0].PublicIpAddress" \
     --output text \
     --profile "$AWS_PROFILE" \
-    --region "$AWS_REGION")
+    --region "$AWS_REGION" 2>/dev/null || echo "None")
 
-echo "🌐 Current public IP: $PUBLIC_IP"
+echo "🔄 Current state: $CURRENT_STATE"
+if [ "$PUBLIC_IP" != "None" ] && [ "$PUBLIC_IP" != "null" ]; then
+    echo "🌐 Current IP: $PUBLIC_IP"
+fi
 
-# Stop the instance
-echo "⏳ Stopping instance..."
-aws ec2 stop-instances \
+# Terminate the instance
+echo "⏳ Terminating instance..."
+aws ec2 terminate-instances \
     --instance-ids "$INSTANCE_ID" \
     --profile "$AWS_PROFILE" \
     --region "$AWS_REGION" >/dev/null
 
-echo "⏳ Waiting for instance to enter stopping state..."
-# Wait for stopping state (much faster than waiting for fully stopped)
+echo "⏳ Waiting for instance to enter terminating state..."
+# Wait for terminating state (much faster than waiting for fully terminated)
 while true; do
     STATE=$(aws ec2 describe-instances \
         --instance-ids "$INSTANCE_ID" \
@@ -81,7 +91,7 @@ while true; do
         --profile "$AWS_PROFILE" \
         --region "$AWS_REGION")
     
-    if [ "$STATE" = "stopping" ] || [ "$STATE" = "stopped" ]; then
+    if [ "$STATE" = "shutting-down" ] || [ "$STATE" = "terminated" ]; then
         echo "✅ Instance is now in '$STATE' state"
         break
     fi
@@ -91,12 +101,12 @@ while true; do
 done
 
 echo ""
-echo "✅ Instance stop initiated successfully!"
+echo "✅ Instance termination initiated successfully!"
 echo "📋 Instance ID: $INSTANCE_ID"
-echo "💰 The instance is stopping and will save costs."
+echo "💰 Instance and all associated storage will be destroyed (no ongoing costs)."
 echo ""
-echo "ℹ️  To restart the instance:"
+echo "ℹ️  To launch a fresh instance:"
 echo "   make start"
 echo ""
-echo "⚠️  Note: The public IP address will change when you restart the instance."
-echo "   Last known IP was: $PUBLIC_IP" 
+echo "ℹ️  To pause instead of terminate next time:"
+echo "   make pause" 
