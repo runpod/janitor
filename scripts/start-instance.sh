@@ -210,7 +210,10 @@ for i in {1..30}; do
         echo "✅ SSH connection established!"
         break
     else
-        echo "   Attempt $i/30: SSH not ready yet, waiting 10 seconds..."
+        # Show progress without spam
+        if [ $((i % 5)) -eq 0 ]; then
+            echo "   Still waiting... ($i/30 attempts)"
+        fi
         sleep 10
     fi
 done
