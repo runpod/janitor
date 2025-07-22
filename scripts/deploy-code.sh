@@ -94,15 +94,46 @@ ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" << 'EOF'
     cd packages/janitor-agent
     sudo npm install
     
+    # Build the TypeScript project
+    sudo npm run build
+    
     # Copy the environment file
     sudo cp /tmp/janitor.env .env
     
     # Set ownership
     sudo chown -R ubuntu:ubuntu /opt/janitor
     
+    # Create systemd service for the Mastra server
+    sudo tee /etc/systemd/system/janitor-mastra.service > /dev/null << 'EOF'
+[Unit]
+Description=Janitor Mastra Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/janitor/packages/janitor-agent
+Environment=NODE_ENV=production
+Environment=PATH=/usr/bin:/usr/local/bin
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=janitor-mastra
+KillMode=mixed
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Reload systemd and enable service
+    sudo systemctl daemon-reload
+    sudo systemctl enable janitor-mastra
+    
     # Start the service
     sudo systemctl start janitor-mastra
-    sudo systemctl enable janitor-mastra
     
     echo "✅ Deployment complete!"
 EOF
@@ -122,5 +153,4 @@ echo "🔗 Mastra API: http://$PUBLIC_IP:3000"
 echo "🔗 Health check: http://$PUBLIC_IP:3000/health"
 echo ""
 echo "ℹ️  This updates an existing instance. For fresh instances, use 'make start' instead."
-echo "🔧 To check logs: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo journalctl -u janitor-mastra -f'"
-echo "🔄 To restart service: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo systemctl restart janitor-mastra'" 
+echo "🔧 To check logs: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP 'sudo journalctl -u janitor-mastra -f'" 

@@ -5,7 +5,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "mastra dev",
-    "start": "tsx src/server.ts",
+    "start": "node dist/src/server.js",
+    "start:dev": "tsx src/server.ts",
     "start:local": "tsx src/index.ts",
     "build": "tsc",
     "build:mcp": "tsc && node dist/mastra/tools/mcp-servers.js docker",

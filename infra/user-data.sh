@@ -35,7 +35,8 @@ cd /opt/janitor
 echo "Environment setup complete. Code will be deployed separately."
 
 # Create environment file template (will be populated during code deployment)
-cat > .env.template << 'EOF'
+mkdir -p /opt/janitor/packages/janitor-agent
+cat > /opt/janitor/packages/janitor-agent/.env.template << 'EOF'
 # API Keys
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
@@ -50,34 +51,6 @@ SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
 PORT=3000
 NODE_ENV=production
 EOF
-
-# Create systemd service for the Mastra server (will be started after code deployment)
-cat > /etc/systemd/system/janitor-mastra.service << 'EOF'
-[Unit]
-Description=Janitor Mastra Server
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/opt/janitor/packages/janitor-agent
-Environment=NODE_ENV=production
-Environment=PATH=/usr/bin:/usr/local/bin
-ExecStart=/usr/bin/npm start
-Restart=always
-RestartSec=10
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=janitor-mastra
-KillMode=mixed
-KillSignal=SIGINT
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Enable service (but don't start until code is deployed)
-systemctl enable janitor-mastra
 
 # Create directories for Docker layer caching (persistent EBS volume)
 mkdir -p /var/lib/docker
