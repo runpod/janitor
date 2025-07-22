@@ -38,6 +38,9 @@ export const analysisResultSchema = z.object({
 		.array(repositoryAnalysisSchema)
 		.describe("Detailed results for each repository"),
 	summary: z.string().describe("Overall summary of the processing session"),
+	notes: z
+		.string()
+		.describe("Notes about the analysis, stuff that did not fit into the other fields"),
 });
 
 export const analyzerAgent = new Agent({
@@ -83,7 +86,6 @@ Key rules:
 - ALWAYS include validation_passed and action fields - they are required
 - Be precise about success vs failure - don't guess
 - If unclear, default to failed with error explanation
-
-Focus on the actual tool results rather than just text descriptions.`,
+`,
 	model: getModel(),
 });

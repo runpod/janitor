@@ -428,99 +428,35 @@ const generateReportStep = createStep({
 
 		if (wasSkipped) {
 			// If container run was skipped, consider it successful if build worked
-			allStepsCompleted = repoPath && dockerfilePath && imageName && buildResult?.success;
+			allStepsCompleted = !!(repoPath && dockerfilePath && imageName && buildResult?.success);
 		} else {
 			// Normal validation path
-			allStepsCompleted =
+			allStepsCompleted = !!(
 				repoPath &&
 				dockerfilePath &&
 				imageName &&
 				containerId &&
 				logsResult &&
-				logsResult.success;
+				logsResult.success
+			);
 		}
 
-		// NEW: Analyze container logs to determine if container ran successfully
-		let containerRanSuccessfully = false; // Start with false, require positive proof of success
-		const logAnalysisErrors: string[] = [];
+		// Technical validation only: Did we successfully get logs from the container?
+		const gotContainerLogs = Boolean(!wasSkipped && logsResult?.logs && logsResult.success);
 
 		if (!wasSkipped && logsResult?.logs) {
 			const logs = logsResult.logs;
-			console.log(`🔍 Analyzing container logs for success indicators...`);
-			console.log(`📝 Container logs (${logs.length} chars):`);
-			console.log(`"${logs.substring(0, 500)}"`);
-
-			const logLines = logs.split("\n").filter(line => line.trim() !== "");
-			console.log(`📊 Log lines count: ${logLines.length}`);
-
-			// FIRST: Check for clear SUCCESS indicators
-			const hasRunPodSuccess =
-				logs.includes("completed successfully") ||
-				logs.includes("Job result:") ||
-				logs.includes("Local testing complete");
-
-			const hasServerSuccess =
-				logs.includes("server") ||
-				logs.includes("listening") ||
-				logs.includes("ready") ||
-				logs.includes("Server running");
-
-			const hasGeneralSuccess =
-				logs.includes("started") || logs.includes("running") || logLines.length > 8; // More logs usually indicate continued operation
-
-			if (hasRunPodSuccess) {
-				containerRanSuccessfully = true;
-				console.log(`✅ Found RunPod success indicators`);
-			} else if (hasServerSuccess) {
-				containerRanSuccessfully = true;
-				console.log(`✅ Found server success indicators`);
-			} else if (hasGeneralSuccess) {
-				containerRanSuccessfully = true;
-				console.log(`✅ Found general success indicators`);
-			}
-
-			// SECOND: Check for ERROR indicators that override success
-			if (logs.includes("ERROR") || logs.includes("FATAL")) {
-				containerRanSuccessfully = false;
-				logAnalysisErrors.push("Container had ERROR or FATAL messages");
-				console.log(`❌ Found ERROR/FATAL indicators in logs`);
-			}
-
-			// THIRD: Check for specific failure patterns
-			if (logs.includes("WARN") && logs.includes("not found")) {
-				containerRanSuccessfully = false;
-				logAnalysisErrors.push("Container missing required files or configuration");
-				console.log(`❌ Found warning about missing files`);
-			}
-
-			// FOURTH: Check for too few logs (likely immediate crash)
-			if (logLines.length <= 2) {
-				containerRanSuccessfully = false;
-				logAnalysisErrors.push("Container produced minimal logs (likely immediate exit)");
-				console.log(`❌ Too few log lines (${logLines.length})`);
-			}
-
-			// FINAL: If no success indicators found
-			if (!containerRanSuccessfully && logAnalysisErrors.length === 0) {
-				logAnalysisErrors.push("No clear success indicators found in container logs");
-				console.log(`❌ No success indicators found`);
-			}
-
-			console.log(
-				`📊 Container log analysis: ${containerRanSuccessfully ? "✅ Success" : "❌ Failed"}`
-			);
-			if (logAnalysisErrors.length > 0) {
-				console.log(`⚠️  Log analysis issues: ${logAnalysisErrors.join(", ")}`);
-			}
+			console.log(`✅ Container logs retrieved successfully (${logs.length} chars)`);
+			console.log(`📝 First 200 chars of logs: "${logs.substring(0, 200)}"`);
 		} else {
 			console.log(
-				`⚠️  No logs to analyze (wasSkipped: ${wasSkipped}, logs available: ${!!logsResult?.logs})`
+				`⚠️  No container logs retrieved (wasSkipped: ${wasSkipped}, logs available: ${!!logsResult?.logs})`
 			);
 		}
 
-		// Overall success requires both technical success AND container running successfully
+		// Overall technical success: build + run + logs (no semantic interpretation)
 		const overallSuccess =
-			!hasStepErrors && allStepsCompleted && (wasSkipped || containerRanSuccessfully);
+			!hasStepErrors && allStepsCompleted && (wasSkipped || gotContainerLogs);
 
 		// Generate report
 		let report = `# Docker Validation Report
@@ -531,16 +467,15 @@ const generateReportStep = createStep({
 			report += `
 * validation: ⚠️ partial (build-only)
 * reason: ${skipReason}`;
-		} else if (!containerRanSuccessfully) {
-			report += `
-* container_status: ❌ failed to run successfully
-* issues: ${logAnalysisErrors.join(", ")}`;
-
-			// Include actual container logs for janitor agent to analyze
+		} else {
+			// Always include container logs for janitor agent to analyze
 			if (logsResult?.logs) {
 				report += `
 * container_logs:
 ${logsResult.logs}`;
+			} else {
+				report += `
+* container_logs: No logs available`;
 			}
 		}
 

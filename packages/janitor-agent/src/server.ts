@@ -186,7 +186,26 @@ async function processCustomPromptRequest(
 		console.log(`✅ Janitor agent completed processing`);
 
 		// Step 2: Use analyzer agent to get structured results
+		console.log(`\n\n--------------------------------`);
+		console.log(`RESULT ANALYZER PROMPT`);
+		console.log(`--------------------------------\n\n`);
+
 		const analyzerAgent = mastra.getAgent("analyzer");
+
+		// Extract tool calls from steps (multi-step execution)
+		const allToolCalls = [];
+		const allToolResults = [];
+
+		if (janitorResponse.steps && Array.isArray(janitorResponse.steps)) {
+			for (const step of janitorResponse.steps) {
+				if (step.toolCalls) {
+					allToolCalls.push(...step.toolCalls);
+				}
+				if (step.toolResults) {
+					allToolResults.push(...step.toolResults);
+				}
+			}
+		}
 
 		const analysisPrompt = `Analyze the following repository operation results:
 
@@ -197,7 +216,10 @@ Agent Response:
 ${janitorResponse.text}
 
 Tool Calls and Results:
-${JSON.stringify(janitorResponse.toolCalls || [], null, 2)}
+${JSON.stringify(allToolCalls, null, 2)}
+
+Tool Results Details:
+${JSON.stringify(allToolResults, null, 2)}
 
 Please provide a structured analysis of what happened, focusing on:
 1. Whether validation ultimately passed or failed for each repository
@@ -208,15 +230,14 @@ Please provide a structured analysis of what happened, focusing on:
 Be precise about validation_passed - only set to true if final validation actually succeeded.`;
 
 		const analysisResponse = await analyzerAgent.generate(analysisPrompt, {
-			experimental_output: analysisResultSchema,
+			output: analysisResultSchema,
 		});
 
 		console.log(`✅ Analysis completed`);
-		console.log(`🔍 Raw analysis response:`, JSON.stringify(analysisResponse, null, 2));
 
 		// Extract the structured analysis
 		const analysisResult = (analysisResponse as any).object || analysisResponse;
-		console.log(`🔍 Extracted analysis result:`, JSON.stringify(analysisResult, null, 2));
+		console.log(`🔍 EXTRACTED ANALYSIS RESULT:\n\n`, JSON.stringify(analysisResult, null, 2));
 
 		if (
 			!analysisResult ||
@@ -281,8 +302,7 @@ Be precise about validation_passed - only set to true if final validation actual
 				`📊 Repository ${repoFullName}: ${repoResult.status} (validation_passed: ${repoResult.validation_passed}) -> database status: ${validationStatus}`
 			);
 
-			// Store the analyzed result
-			await updateValidationResult(runId, repo.name, {
+			const dataToStore = {
 				validation_status: validationStatus,
 				results_json: {
 					status: repoResult.status,
@@ -298,7 +318,12 @@ Be precise about validation_passed - only set to true if final validation actual
 					full_analysis: analysisResult,
 				},
 				original_prompt: parsedPrompt.originalPrompt,
-			});
+			};
+
+			console.log(`🔍 STORING IN DATABASE:`, JSON.stringify(dataToStore, null, 2));
+
+			// Store the analyzed result
+			await updateValidationResult(runId, repo.name, dataToStore);
 
 			console.log(`✅ Stored result for ${repoFullName}: ${validationStatus}`);
 		}
