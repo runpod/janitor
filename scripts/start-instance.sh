@@ -26,6 +26,23 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$ANTHROPIC_API_KEY" ] || [ -z "$GITHUB_PERSON
     exit 1
 fi
 
+# Set SSH_KEY_PATH default if not provided
+if [ -z "$SSH_KEY_PATH" ]; then
+    SSH_KEY_PATH="~/.ssh/janitor-key"
+    echo "ℹ️  Using default SSH key path: $SSH_KEY_PATH"
+fi
+
+# Expand tilde in SSH_KEY_PATH
+SSH_KEY_PATH="${SSH_KEY_PATH/#\~/$HOME}"
+
+# Verify SSH key exists
+if [ ! -f "$SSH_KEY_PATH" ]; then
+    echo "❌ Error: SSH key file not found: $SSH_KEY_PATH"
+    echo "Please ensure your SSH key is properly configured in .env:"
+    echo "  SSH_KEY_PATH=/path/to/your/key.pem"
+    exit 1
+fi
+
 echo "🚀 Launching Janitor GPU instance..."
 
 # Instance configuration
@@ -183,11 +200,34 @@ echo "🎉 Instance is ready!"
 echo "📋 Instance ID: $INSTANCE_ID"
 echo "🌐 Public IP: $PUBLIC_IP"
 echo ""
+
+# Wait for SSH to become available (Deep Learning AMI takes longer to boot)
+echo "⏳ Waiting for SSH to become available..."
+SSH_READY=false
+for i in {1..30}; do
+    if ssh -i "$SSH_KEY_PATH" -o ConnectTimeout=10 -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" "echo 'SSH ready'" >/dev/null 2>&1; then
+        SSH_READY=true
+        echo "✅ SSH connection established!"
+        break
+    else
+        echo "   Attempt $i/30: SSH not ready yet, waiting 10 seconds..."
+        sleep 10
+    fi
+done
+
+if [ "$SSH_READY" = false ]; then
+    echo "❌ Error: SSH connection failed after 5 minutes"
+    echo "🔧 Debug steps:"
+    echo "   1. Check security group allows SSH (port 22): aws ec2 describe-security-groups --group-names janitor-sg --profile $AWS_PROFILE --region $AWS_REGION"
+    echo "   2. Verify SSH key: ls -la $SSH_KEY_PATH"
+    echo "   3. Try manual SSH: ssh -i $SSH_KEY_PATH ubuntu@$PUBLIC_IP"
+    echo "   4. Check instance logs: aws logs describe-log-streams --log-group-name /aws/ec2/user-data --profile $AWS_PROFILE --region $AWS_REGION"
+    exit 1
+fi
+
+echo ""
 echo "📊 Streaming environment setup (this will stop automatically when complete):"
 echo "────────────────────────────────────────────────────────────────────────"
-
-# Wait a moment for the instance to start user-data script
-sleep 10
 
 # Stream the bootstrap logs and wait for completion
 ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP" '
