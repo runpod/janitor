@@ -1,9 +1,10 @@
 import { config } from "dotenv";
 import express from "express";
+import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
 import { mastra } from "./mastra/index.js";
-import { parseRepositoriesFromPrompt } from "./utils/prompt-parser.js";
+import { parseRepositoriesFromPrompt } from "./utils/prompt-parser";
 import { storeValidationResult, updateValidationResult } from "./utils/supabase.js";
 
 // Load environment variables from project root
