@@ -163,6 +163,14 @@ make stop
 - Development and testing utilities
 - Local validation workflows
 
+### Multi-Repository Processing Pattern
+
+**Sequential Processing**: When multiple repositories are specified, the server processes them individually and sequentially. Each repository receives its own complete janitor agent run and analyzer run, with results stored immediately upon completion.
+
+**Immediate Database Updates**: Results are stored in the database immediately after each repository completes processing, enabling real-time progress monitoring. Users can query partial results during long-running multi-repository validations.
+
+**Single Repository Analysis**: The analyzer agent is designed to analyze one repository at a time. When building new analysis features, ensure prompts specify which single repository to analyze to avoid cross-repository contamination.
+
 ### Tool Implementation Patterns
 
 #### Direct Tool Integration (PREFERRED)

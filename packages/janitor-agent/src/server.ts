@@ -187,46 +187,60 @@ async function processCustomPromptRequest(
 	console.log(`🚀 Starting async processing for run ${runId}`);
 
 	try {
-		const customPrompt = generateRepositoryPrompt(
-			parsedPrompt.actionIntent,
-			parsedPrompt.repositories[0]
+		console.log(
+			`🚀 Processing ${parsedPrompt.repositories.length} repositories sequentially...`
 		);
-		console.log(`📝 Repository prompt: "${customPrompt.substring(0, 100)}..."`);
 
-		// Step 1: Run the main janitor agent (with tool calls)
-		const janitorAgent = mastra.getAgent("janitor");
-		const janitorResponse = await janitorAgent.generate(customPrompt, {
-			maxSteps: 20,
-		});
+		// Process each repository individually
+		const allRepositoryResults = [];
 
-		console.log(`✅ Janitor agent completed processing`);
+		for (let i = 0; i < parsedPrompt.repositories.length; i++) {
+			const repo = parsedPrompt.repositories[i];
+			const repoFullName = `${repo.org}/${repo.name}`;
 
-		// Step 2: Use analyzer agent to get structured results
-		console.log(`\n\n--------------------------------`);
-		console.log(`RESULT ANALYZER PROMPT`);
-		console.log(`--------------------------------\n\n`);
+			console.log(
+				`\n📦 Processing repository ${i + 1}/${parsedPrompt.repositories.length}: ${repoFullName}`
+			);
 
-		const analyzerAgent = mastra.getAgent("analyzer");
+			try {
+				const customPrompt = generateRepositoryPrompt(parsedPrompt.actionIntent, repo);
+				console.log(`📝 Repository prompt: "${customPrompt.substring(0, 100)}..."`);
+				console.log(`Repository: ${repoFullName}...`);
 
-		// Extract tool calls from steps (multi-step execution)
-		const allToolCalls = [];
-		const allToolResults = [];
+				// Step 1: Run the main janitor agent for this repository
+				const janitorAgent = mastra.getAgent("janitor");
+				const janitorResponse = await janitorAgent.generate(customPrompt, {
+					maxSteps: 20,
+				});
 
-		if (janitorResponse.steps && Array.isArray(janitorResponse.steps)) {
-			for (const step of janitorResponse.steps) {
-				if (step.toolCalls) {
-					allToolCalls.push(...step.toolCalls);
+				console.log(`✅ Janitor agent completed processing for ${repoFullName}`);
+
+				// Step 2: Use analyzer agent to get structured results for this repository
+				console.log(`\n--------------------------------`);
+				console.log(`RESULT ANALYZER FOR ${repoFullName}`);
+				console.log(`--------------------------------\n`);
+
+				const analyzerAgent = mastra.getAgent("analyzer");
+
+				// Extract tool calls from steps (multi-step execution)
+				const allToolCalls = [];
+				const allToolResults = [];
+
+				if (janitorResponse.steps && Array.isArray(janitorResponse.steps)) {
+					for (const step of janitorResponse.steps) {
+						if (step.toolCalls) {
+							allToolCalls.push(...step.toolCalls);
+						}
+						if (step.toolResults) {
+							allToolResults.push(...step.toolResults);
+						}
+					}
 				}
-				if (step.toolResults) {
-					allToolResults.push(...step.toolResults);
-				}
-			}
-		}
 
-		const analysisPrompt = `Analyze the following repository operation results:
+				const analysisPrompt = `Analyze the following repository operation results for ONLY this specific repository: ${repoFullName}
 
 Original Prompt: ${parsedPrompt.originalPrompt}
-Repositories: ${parsedPrompt.repositories.map(r => `${r.org}/${r.name}`).join(", ")}
+Repository to Analyze: ${repoFullName}
 
 Agent Response:
 ${janitorResponse.text}
@@ -237,112 +251,179 @@ ${JSON.stringify(allToolCalls, null, 2)}
 Tool Results Details:
 ${JSON.stringify(allToolResults, null, 2)}
 
+IMPORTANT: Only provide analysis for the repository "${repoFullName}". 
+If the tool results contain multiple repositories, only analyze the results relevant to "${repoFullName}".
+Your response must contain exactly ONE repository result for "${repoFullName}".
+
 Please provide a structured analysis of what happened, focusing on:
-1. Whether validation ultimately passed or failed for each repository
-2. What actions were performed
-3. Any PR information
+1. Whether validation ultimately passed or failed for this specific repository: ${repoFullName}
+2. What actions were performed for this repository
+3. Any PR information for this repository
 4. Error details if applicable
 
-Be precise about validation_passed - only set to true if final validation actually succeeded.`;
+Be precise about validation_passed - only set to true if final validation actually succeeded for ${repoFullName}.`;
 
-		const analysisResponse = await analyzerAgent.generate(analysisPrompt, {
-			output: analysisResultSchema,
-		});
-
-		console.log(`✅ Analysis completed`);
-
-		// Extract the structured analysis
-		const analysisResult = (analysisResponse as any).object || analysisResponse;
-		console.log(`🔍 EXTRACTED ANALYSIS RESULT:\n\n`, JSON.stringify(analysisResult, null, 2));
-
-		if (
-			!analysisResult ||
-			!analysisResult.repositories ||
-			!Array.isArray(analysisResult.repositories)
-		) {
-			console.error(`❌ Invalid analysis structure: missing repositories array`);
-
-			// Fallback: mark all repositories as failed
-			for (const repo of parsedPrompt.repositories) {
-				await updateValidationResult(runId, repo.name, {
-					validation_status: "failed",
-					results_json: {
-						status: "failed",
-						error: "Analysis failed - invalid structure",
-						timestamp: new Date().toISOString(),
-						repository: `${repo.org}/${repo.name}`,
-						janitor_response: janitorResponse.text,
-						analysis_error: JSON.stringify(analysisResult),
-					},
-					original_prompt: parsedPrompt.originalPrompt,
+				const analysisResponse = await analyzerAgent.generate(analysisPrompt, {
+					output: analysisResultSchema,
 				});
-			}
-			return;
-		}
 
-		// Process each repository result
-		for (const repo of parsedPrompt.repositories) {
-			const repoFullName = `${repo.org}/${repo.name}`;
+				console.log(`✅ Analysis completed for ${repoFullName}`);
 
-			// Find the result for this repository
-			const repoResult = analysisResult.repositories.find(
-				(r: any) =>
-					r.repository === repoFullName ||
-					r.repository === repo.name ||
-					r.repository.endsWith(`/${repo.name}`)
-			);
+				// Extract the structured analysis
+				const analysisResult = (analysisResponse as any).object || analysisResponse;
+				console.log(
+					`🔍 ANALYSIS RESULT FOR ${repoFullName}:\n`,
+					JSON.stringify(analysisResult, null, 2)
+				);
 
-			if (!repoResult) {
-				console.error(`❌ No analysis result found for repository ${repoFullName}`);
+				// ⚡ IMMEDIATE DATABASE UPDATE - Don't wait for all repos to finish!
+				if (
+					analysisResult?.repositories &&
+					Array.isArray(analysisResult.repositories) &&
+					analysisResult.repositories.length > 0
+				) {
+					const repoAnalysis = analysisResult.repositories[0];
+					const validationStatus: "success" | "failed" = repoAnalysis.validation_passed
+						? "success"
+						: "failed";
 
+					console.log(
+						`📊 Repository ${repoFullName}: ${repoAnalysis.status} (validation_passed: ${repoAnalysis.validation_passed}) -> database status: ${validationStatus}`
+					);
+
+					const dataToStore = {
+						validation_status: validationStatus,
+						results_json: {
+							status: repoAnalysis.status,
+							action: repoAnalysis.action,
+							details: repoAnalysis.details,
+							validation_passed: repoAnalysis.validation_passed,
+							pr_status: repoAnalysis.pr_status,
+							pr_url: repoAnalysis.pr_url,
+							error_message: repoAnalysis.error_message,
+							timestamp: new Date().toISOString(),
+							repository: repoFullName,
+							janitor_response: janitorResponse?.text || null,
+							full_analysis: analysisResult,
+						},
+						original_prompt: parsedPrompt.originalPrompt,
+					};
+
+					console.log(
+						`🔍 STORING IN DATABASE IMMEDIATELY:`,
+						JSON.stringify(dataToStore, null, 2)
+					);
+					await updateValidationResult(runId, repo.name, dataToStore);
+					console.log(`✅ Enhanced validation result updated successfully`);
+					console.log(`✅ Stored result for ${repoFullName}: ${validationStatus}`);
+				} else {
+					console.error(`❌ Invalid analysis structure for repository ${repoFullName}`);
+					await updateValidationResult(runId, repo.name, {
+						validation_status: "failed",
+						results_json: {
+							status: "failed",
+							error: "Analysis failed - invalid structure",
+							timestamp: new Date().toISOString(),
+							repository: repoFullName,
+							janitor_response: janitorResponse?.text || null,
+							analysis_error: JSON.stringify(analysisResult),
+						},
+						original_prompt: parsedPrompt.originalPrompt,
+					});
+					console.log(`✅ Stored invalid analysis result for ${repoFullName}: failed`);
+				}
+
+				// Store the result for final summary (keep this for the completion message)
+				allRepositoryResults.push({
+					repository: repo,
+					janitorResponse,
+					analysisResult,
+					success: true,
+				});
+			} catch (repoError) {
+				console.error(`❌ Error processing repository ${repoFullName}:`, repoError);
+
+				// ⚡ IMMEDIATE DATABASE UPDATE FOR ERROR
 				await updateValidationResult(runId, repo.name, {
 					validation_status: "failed",
 					results_json: {
-						status: "failed",
-						error: "Repository not found in analysis result",
+						status: "error",
+						error: repoError instanceof Error ? repoError.message : String(repoError),
 						timestamp: new Date().toISOString(),
 						repository: repoFullName,
-						janitor_response: janitorResponse.text,
+						janitor_response: null,
 					},
 					original_prompt: parsedPrompt.originalPrompt,
 				});
-				continue;
+				console.log(`✅ Stored error result for ${repoFullName}: failed`);
+
+				// Store error result for final summary
+				allRepositoryResults.push({
+					repository: repo,
+					janitorResponse: null,
+					analysisResult: {
+						success: false,
+						total_repositories: 1,
+						successful_repositories: 0,
+						failed_repositories: 1,
+						repositories: [
+							{
+								repository: repoFullName,
+								action: "error",
+								status: "error",
+								validation_passed: false,
+								error_message:
+									repoError instanceof Error
+										? repoError.message
+										: String(repoError),
+								details: `Processing failed: ${repoError instanceof Error ? repoError.message : String(repoError)}`,
+							},
+						],
+					},
+					success: false,
+					error: repoError,
+				});
 			}
-
-			// Map validation_passed to database status
-			const validationStatus: "success" | "failed" = repoResult.validation_passed
-				? "success"
-				: "failed";
-
-			console.log(
-				`📊 Repository ${repoFullName}: ${repoResult.status} (validation_passed: ${repoResult.validation_passed}) -> database status: ${validationStatus}`
-			);
-
-			const dataToStore = {
-				validation_status: validationStatus,
-				results_json: {
-					status: repoResult.status,
-					action: repoResult.action,
-					details: repoResult.details,
-					validation_passed: repoResult.validation_passed,
-					pr_status: repoResult.pr_status,
-					pr_url: repoResult.pr_url,
-					error_message: repoResult.error_message,
-					timestamp: new Date().toISOString(),
-					repository: repoFullName,
-					janitor_response: janitorResponse.text,
-					full_analysis: analysisResult,
-				},
-				original_prompt: parsedPrompt.originalPrompt,
-			};
-
-			console.log(`🔍 STORING IN DATABASE:`, JSON.stringify(dataToStore, null, 2));
-
-			// Store the analyzed result
-			await updateValidationResult(runId, repo.name, dataToStore);
-
-			console.log(`✅ Stored result for ${repoFullName}: ${validationStatus}`);
 		}
+
+		console.log(
+			`\n🏁 Completed processing all ${parsedPrompt.repositories.length} repositories`
+		);
+
+		// Combine all analysis results
+		let combinedAnalysisResult = {
+			success: true,
+			total_repositories: parsedPrompt.repositories.length,
+			successful_repositories: 0,
+			failed_repositories: 0,
+			repositories: [] as any[],
+		};
+
+		for (const repoResult of allRepositoryResults) {
+			if (repoResult.success && repoResult.analysisResult?.repositories) {
+				// Add repositories from this analysis and count properly
+				for (const repo of repoResult.analysisResult.repositories) {
+					combinedAnalysisResult.repositories.push(repo);
+					if (repo.validation_passed) {
+						combinedAnalysisResult.successful_repositories++;
+					} else {
+						combinedAnalysisResult.failed_repositories++;
+					}
+				}
+			} else if (!repoResult.success && repoResult.analysisResult?.repositories) {
+				// Add error repositories
+				for (const repo of repoResult.analysisResult.repositories) {
+					combinedAnalysisResult.repositories.push(repo);
+					combinedAnalysisResult.failed_repositories++;
+				}
+			} else if (!repoResult.success) {
+				// Handle cases where we have an error but no analysis result
+				combinedAnalysisResult.failed_repositories++;
+			}
+		}
+
+		// Use the combined analysis result for final completion message
+		const analysisResult = combinedAnalysisResult;
 
 		const successfulRepos = analysisResult.successful_repositories || 0;
 		const totalRepos = analysisResult.total_repositories || parsedPrompt.repositories.length;
