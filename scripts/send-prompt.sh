@@ -97,11 +97,15 @@ echo ""
 
 # Send the prompt
 echo "📤 Sending prompt to Mastra server..."
-echo "💬 Prompt: \"$PROMPT\""
+echo "💬 Prompt:"
+echo "────────────────────────────────────────"
+printf '%s\n' "$PROMPT"
+echo "────────────────────────────────────────"
 echo ""
 
 # Create JSON payload using jq to properly escape the prompt
-JSON_PAYLOAD=$(jq -n --arg msg "$PROMPT" '{message: $msg}')
+# Use printf to handle multiline content properly
+JSON_PAYLOAD=$(printf '%s' "$PROMPT" | jq -Rs '{message: .}')
 
 # Send POST request to Mastra API
 RESPONSE=$(curl -s \
@@ -123,6 +127,21 @@ fi
 # Parse and display response
 echo "✅ Prompt sent successfully!"
 echo ""
+
+# Check if response contains an error
+if echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1; then
+    echo "❌ Server Error:"
+    echo "$RESPONSE" | jq -r '.error // "Unknown error"'
+    if echo "$RESPONSE" | jq -e '.details' >/dev/null 2>&1; then
+        echo "📋 Details:"
+        echo "$RESPONSE" | jq -r '.details // "No details"'
+    fi
+    echo ""
+    echo "💡 This indicates a server-side issue. Check server logs:"
+    echo "   make logs"
+    exit 1
+fi
+
 echo "📋 Response:"
 echo "$RESPONSE" | jq . 2>/dev/null || echo "$RESPONSE"
 echo ""

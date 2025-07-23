@@ -303,8 +303,8 @@ const dockerLogsStep = createStep({
 			// Wait for container to start and generate some logs
 			await new Promise(resolve => setTimeout(resolve, waitTime));
 
-			// Get container logs
-			const logsResult = await getContainerLogs(containerId, tail, "5s");
+			// Get container logs (removed "5s" restriction to get ALL logs, not just recent ones)
+			const logsResult = await getContainerLogs(containerId, tail);
 
 			let logs = "";
 			let lineCount = 0;

@@ -321,9 +321,9 @@ echo "────────────────────────�
 echo "🚀 Environment ready! Now deploying code..."
 echo ""
 
-# Deploy the code automatically
-chmod +x scripts/deploy-code.sh
-./scripts/deploy-code.sh
+# Deploy the code automatically using hot deployment
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
 
 echo ""
 echo "🎉 Complete setup finished!"

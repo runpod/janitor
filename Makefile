@@ -44,11 +44,23 @@ pause:
 	@chmod +x scripts/pause-instance.sh
 	@./scripts/pause-instance.sh
 
-.PHONY: deploy-code
-deploy-code:
-	@echo "📦 Updating code on existing instance (not needed for fresh instances)..."
-	@chmod +x scripts/deploy-code.sh
-	@./scripts/deploy-code.sh
+.PHONY: deploy
+deploy:
+	@echo "🚀 Hot deploying Janitor code (zero downtime, atomic swap)..."
+	@chmod +x scripts/deploy.sh
+	@./scripts/deploy.sh
+
+.PHONY: rollback
+rollback:
+ifdef RELEASE
+	@echo "↩️  Rolling back to release: $(RELEASE)"
+	@chmod +x scripts/rollback.sh
+	@./scripts/rollback.sh "$(RELEASE)"
+else
+	@echo "📋 Available releases for rollback:"
+	@chmod +x scripts/rollback.sh
+	@./scripts/rollback.sh
+endif
 
 .PHONY: ssh
 ssh:
@@ -269,6 +281,12 @@ test-local:
 	@echo "🧪 Running local tests..."
 	@cd packages/janitor-agent && npm run start:local
 
+.PHONY: check-build
+check-build:
+	@echo "🔍 Running pre-deployment build checks..."
+	@chmod +x scripts/check-build.sh
+	@./scripts/check-build.sh
+
 # =============================================================================
 # Help
 # =============================================================================
@@ -281,7 +299,7 @@ help:
 	@echo "Setup (one-time):"
 	@echo "  make setup-supabase     - Set up Supabase database"
 	@echo "  make start              - Launch GPU instance"
-	@echo "  make deploy-code        - Deploy janitor code to instance"
+	@echo "  make deploy             - Hot deploy janitor code (zero downtime)"
 	@echo ""
 	@echo "Daily usage:"
 	@echo "  make prompt PROMPT=\"validate RunPod/worker-basic\" - Send validation request"
@@ -293,7 +311,8 @@ help:
 	@echo "  make start              - Start GPU instance (reuses stopped or creates new)"
 	@echo "  make stop               - Terminate instance (complete cleanup, no costs)"
 	@echo "  make pause              - Pause instance (preserve for quick restart)"
-	@echo "  make deploy-code        - Deploy/update code on instance"
+	@echo "  make deploy             - Hot deploy code (zero downtime, atomic swap)"
+	@echo "  make rollback           - List releases or rollback (RELEASE=timestamp)"
 	@echo "  make ssh                - SSH into running instance for debugging"
 	@echo ""
 	@echo "Monitoring commands:"
@@ -304,9 +323,13 @@ help:
 	@echo "Development:"
 	@echo "  make install            - Install dependencies locally"
 	@echo "  make test-local         - Run local tests"
+	@echo "  make check-build        - Verify TypeScript compilation before deploy"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make prompt PROMPT=\"please validate these repos: RunPod/worker-basic\""
 	@echo "  make prompt PROMPT=\"validate worker-template and create a PR if fixes needed\""
+	@echo "  make deploy                                           # Hot deploy latest code"
+	@echo "  make rollback                                         # List available releases"
+	@echo "  make rollback RELEASE=20250103-143022                # Rollback to specific release"
 
 .DEFAULT_GOAL := help 

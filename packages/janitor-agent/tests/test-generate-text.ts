@@ -2,13 +2,16 @@ import { generateText, tool } from "ai";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-import { runpodGeneral } from "../src/mastra/utils/models";
+import { runpodGeneral, sonnetCodeMedium } from "../src/mastra/utils/models";
 
 dotenv.config({ path: ".env" });
 
+// Use RunPod model if available, otherwise fallback to Anthropic
+const model = runpodGeneral || sonnetCodeMedium;
+
 // Create the stream using the AI SDK
 const result = await generateText({
-	model: runpodGeneral,
+	model,
 	messages: [
 		{
 			role: "system",

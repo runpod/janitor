@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import express from "express";
+import express, { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 
 import { analysisResultSchema } from "./mastra/agents/analyzer.js";
@@ -24,12 +24,24 @@ const PORT = process.env.PORT || 3000;
  * - Clean separation of concerns between execution and analysis
  */
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware with error handling
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Error handling middleware for body parsing issues
+app.use((err: any, req: Request, res: Response, next: any) => {
+	console.error("❌ Middleware error:", err.message);
+	if (err.type === "entity.parse.failed" || err.message.includes("Cannot find module")) {
+		return res.status(400).json({
+			error: "Request parsing failed",
+			details: "Server encountered an issue processing the request format",
+		});
+	}
+	next(err);
+});
 
 // Health check endpoint
-app.get("/health", (req, res) => {
+app.get("/health", (req: Request, res: Response) => {
 	res.json({
 		status: "healthy",
 		timestamp: new Date().toISOString(),
@@ -38,15 +50,19 @@ app.get("/health", (req, res) => {
 });
 
 // Main prompt endpoint for natural language requests
-app.post("/api/prompt", async (req, res) => {
+app.post("/api/prompt", async (req: Request, res: Response) => {
+	console.log("📤 Received prompt request");
 	try {
 		const { message } = req.body;
 
 		if (!message) {
+			console.error("❌ Missing message field in request");
 			return res.status(400).json({
 				error: "Missing 'message' field in request body",
 			});
 		}
+
+		console.log("💬 Processing prompt:", message.substring(0, 100) + "...");
 
 		console.log(`📥 Received prompt: "${message}"`);
 
@@ -118,7 +134,7 @@ app.post("/api/prompt", async (req, res) => {
 });
 
 // Get validation results by run ID
-app.get("/api/results/:runId", async (req, res) => {
+app.get("/api/results/:runId", async (req: Request, res: Response) => {
 	try {
 		const { runId } = req.params;
 
@@ -139,7 +155,7 @@ app.get("/api/results/:runId", async (req, res) => {
 });
 
 // Get validation results by repository name
-app.get("/api/results/repo/:repoName", async (req, res) => {
+app.get("/api/results/repo/:repoName", async (req: Request, res: Response) => {
 	try {
 		const { repoName } = req.params;
 
@@ -351,6 +367,20 @@ Be precise about validation_passed - only set to true if final validation actual
 		}
 	}
 }
+
+// Global error handler (must be last middleware)
+app.use((err: any, req: Request, res: Response, next: any) => {
+	console.error("❌ Unhandled server error:", err.message);
+	console.error("Stack:", err.stack);
+
+	if (!res.headersSent) {
+		res.status(500).json({
+			error: "Internal server error",
+			message: "The server encountered an unexpected error processing your request",
+			timestamp: new Date().toISOString(),
+		});
+	}
+});
 
 // Start the server
 app.listen(PORT, () => {
