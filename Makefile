@@ -267,6 +267,18 @@ query-results:
 	@chmod +x scripts/query-results.sh
 	@./scripts/query-results.sh
 
+.PHONY: continue
+continue:
+	@echo "🔄 Managing incomplete validation runs..."
+	@chmod +x scripts/continue.sh
+	@./scripts/continue.sh
+
+.PHONY: cancel
+cancel:
+	@echo "❌ Cancelling validation run..."
+	@chmod +x scripts/cancel.sh
+	@./scripts/cancel.sh "$(RUN_ID)"
+
 # =============================================================================
 # Local Development
 # =============================================================================
@@ -306,6 +318,8 @@ help:
 	@echo "  make query-results                                       - Check recent results"
 	@echo "  make query-results RUN_ID=your-run-id                   - Check specific run"
 	@echo "  make query-results REPO=worker-basic                    - Check repository results"
+	@echo "  make continue                                            - View/continue incomplete runs"
+	@echo "  make cancel RUN_ID=your-run-id                          - Cancel specific incomplete run"
 	@echo ""
 	@echo "Instance management:"
 	@echo "  make start              - Start GPU instance (reuses stopped or creates new)"

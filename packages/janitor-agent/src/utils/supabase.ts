@@ -9,7 +9,7 @@ export interface ValidationResult {
 	run_id: string;
 	repository_name: string;
 	organization: string;
-	validation_status: "success" | "failed" | "running";
+	validation_status: "success" | "failed" | "running" | "cancelled";
 	results_json: any;
 	created_at?: string;
 	original_prompt?: string;
@@ -127,6 +127,84 @@ export async function getValidationResultsByRepo(repositoryName: string) {
 		return results;
 	} catch (error) {
 		console.error("Failed to fetch validation results:", error);
+		throw error;
+	}
+}
+
+// Get orphaned validation runs (running status older than threshold)
+export async function getOrphanedValidationRuns(thresholdHours: number = 5) {
+	try {
+		const thresholdDate = new Date();
+		thresholdDate.setHours(thresholdDate.getHours() - thresholdHours);
+		const thresholdISO = thresholdDate.toISOString();
+
+		const results = await supabaseRequest(
+			`/validation_results?validation_status=eq.running&created_at=lt.${thresholdISO}&order=created_at.desc`
+		);
+
+		// Group by run_id for easier management
+		const groupedRuns: Record<string, any[]> = {};
+		for (const result of results) {
+			if (!groupedRuns[result.run_id]) {
+				groupedRuns[result.run_id] = [];
+			}
+			groupedRuns[result.run_id].push(result);
+		}
+
+		// Convert to array with run metadata
+		return Object.keys(groupedRuns).map(runId => ({
+			run_id: runId,
+			repositories: groupedRuns[runId],
+			repository_count: groupedRuns[runId].length,
+			oldest_created_at: groupedRuns[runId][groupedRuns[runId].length - 1]?.created_at,
+			original_prompt: groupedRuns[runId][0]?.original_prompt,
+		}));
+	} catch (error) {
+		console.error("Failed to fetch orphaned validation runs:", error);
+		throw error;
+	}
+}
+
+// Get incomplete repositories for a specific run
+export async function getIncompleteRepositoriesForRun(runId: string) {
+	try {
+		const results = await supabaseRequest(
+			`/validation_results?run_id=eq.${runId}&validation_status=eq.running&order=created_at.desc`
+		);
+
+		return results;
+	} catch (error) {
+		console.error("Failed to fetch incomplete repositories:", error);
+		throw error;
+	}
+}
+
+// Cancel a validation run by marking all running repositories as cancelled
+export async function cancelValidationRun(runId: string) {
+	try {
+		const payload = {
+			validation_status: "cancelled",
+			results_json: {
+				status: "cancelled",
+				message: "Run cancelled by user",
+				timestamp: new Date().toISOString(),
+			},
+		};
+
+		const updatedResults = await supabaseRequest(
+			`/validation_results?run_id=eq.${runId}&validation_status=eq.running`,
+			{
+				method: "PATCH",
+				body: JSON.stringify(payload),
+			}
+		);
+
+		console.log(
+			`✅ Cancelled validation run ${runId}: ${updatedResults.length} repositories marked as cancelled`
+		);
+		return updatedResults;
+	} catch (error) {
+		console.error("Failed to cancel validation run:", error);
 		throw error;
 	}
 }
