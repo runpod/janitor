@@ -9,7 +9,7 @@ export interface ValidationResult {
 	run_id: string;
 	repository_name: string;
 	organization: string;
-	validation_status: "success" | "failed" | "running" | "cancelled";
+	validation_status: "success" | "failed" | "running" | "queued" | "cancelled";
 	results_json: any;
 	created_at?: string;
 	original_prompt?: string;
@@ -139,7 +139,7 @@ export async function getOrphanedValidationRuns(thresholdHours: number = 5) {
 		const thresholdISO = thresholdDate.toISOString();
 
 		const results = await supabaseRequest(
-			`/validation_results?validation_status=eq.running&created_at=lt.${thresholdISO}&order=created_at.desc`
+			`/validation_results?or=(validation_status.eq.running,validation_status.eq.queued)&created_at=lt.${thresholdISO}&order=created_at.desc`
 		);
 
 		// Group by run_id for easier management
@@ -169,7 +169,7 @@ export async function getOrphanedValidationRuns(thresholdHours: number = 5) {
 export async function getIncompleteRepositoriesForRun(runId: string) {
 	try {
 		const results = await supabaseRequest(
-			`/validation_results?run_id=eq.${runId}&validation_status=eq.running&order=created_at.desc`
+			`/validation_results?run_id=eq.${runId}&or=(validation_status.eq.running,validation_status.eq.queued)&order=created_at.desc`
 		);
 
 		return results;
@@ -192,7 +192,7 @@ export async function cancelValidationRun(runId: string) {
 		};
 
 		const updatedResults = await supabaseRequest(
-			`/validation_results?run_id=eq.${runId}&validation_status=eq.running`,
+			`/validation_results?run_id=eq.${runId}&or=(validation_status.eq.running,validation_status.eq.queued)`,
 			{
 				method: "PATCH",
 				body: JSON.stringify(payload),

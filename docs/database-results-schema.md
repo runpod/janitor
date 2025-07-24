@@ -11,11 +11,13 @@ The janitor system stores validation results in the `validation_results` table w
 
 ## validation_status Field
 
-| Value       | Meaning                | UI Display       | Color |
-| ----------- | ---------------------- | ---------------- | ----- |
-| `"running"` | Validation in progress | 🔄 Processing... | Blue  |
-| `"success"` | Validation passed      | ✅ Passed        | Green |
-| `"failed"`  | Validation failed      | ❌ Failed        | Red   |
+| Value         | Meaning                 | UI Display       | Color  |
+| ------------- | ----------------------- | ---------------- | ------ |
+| `"queued"`    | Waiting to be processed | 📋 Queued        | Gray   |
+| `"running"`   | Currently processing    | 🔄 Processing... | Blue   |
+| `"success"`   | Validation passed       | ✅ Passed        | Green  |
+| `"failed"`    | Validation failed       | ❌ Failed        | Red    |
+| `"cancelled"` | Processing cancelled    | ❌ Cancelled     | Orange |
 
 ## results_json Structure
 
@@ -73,9 +75,11 @@ The `results_json` field contains a structured object with the following propert
 ```typescript
 const getStatusColor = (validation_status: string) => {
   switch(validation_status) {
+    case "queued": return "gray"
     case "running": return "blue"
     case "success": return "green"
     case "failed": return "red"
+    case "cancelled": return "orange"
     default: return "gray"
   }
 }

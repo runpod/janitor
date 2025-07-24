@@ -183,7 +183,7 @@ Please apply the above instructions to this specific repository.`;
                 run_id: runId,
                 repository_name: repo.name,
                 organization: repo.org,
-                validation_status: "running",
+                validation_status: "queued",
                 original_prompt: parsedPrompt.originalPrompt,
                 repository_prompt: repositoryPrompt,
                 prompt_type: parsedPrompt.promptType,
@@ -346,7 +346,7 @@ curl -X POST http://instance-ip:3000/api/prompt \
 
 ```typescript
 // Legacy format (still supported)
-"validate worker-basic, worker-template"// → Parser detects no DSL, uses legacy parsing
+"validate worker-basic, worker-template" // → Parser detects no DSL, uses legacy parsing
 // → Generates: "Please validate this repository: RunPod/worker-basic"
 
 // New DSL format
@@ -354,7 +354,7 @@ curl -X POST http://instance-ip:3000/api/prompt \
 Add comprehensive logging with structured output
 
 REPOS:
-worker-basic, worker-template`// → Parser detects DSL format
+worker-basic, worker-template` // → Parser detects DSL format
 // → Generates: "Add comprehensive logging with structured output\n\nRepository: RunPod/worker-basic\n\nPlease apply the above instructions to this specific repository."
 
 // Complex DSL with code examples

@@ -407,13 +407,13 @@ const generateReportStep = createStep({
 		// Collect errors from steps
 		const errors: Record<string, string> = {};
 		if (buildResult && !buildResult.success && buildResult.error) {
-			errors.build = buildResult.error.split("\n").slice(-8).join("\n");
+			errors.build = buildResult.error.split("\n").slice(-50).join("\n");
 		}
 		if (runResult && !runResult.success && runResult.error) {
-			errors.run = runResult.error.split("\n").slice(-8).join("\n");
+			errors.run = runResult.error.split("\n").slice(-50).join("\n");
 		}
 		if (logsResult && !logsResult.success && logsResult.error) {
-			errors.logs = logsResult.error.split("\n").slice(-8).join("\n");
+			errors.logs = logsResult.error.split("\n").slice(-50).join("\n");
 		}
 
 		// Determine technical success (all steps completed)

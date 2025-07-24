@@ -73,9 +73,10 @@ async function testServerStructuredOutput() {
 			results = currentResults || [];
 
 			if (results.length > 0) {
-				// Check if processing is complete (not "running")
+				// Check if processing is complete (not "running" or "queued")
 				const completedResults = results.filter(
-					(r: any) => r.validation_status !== "running"
+					(r: any) =>
+						r.validation_status !== "running" && r.validation_status !== "queued"
 				);
 
 				if (completedResults.length === results.length) {
@@ -113,7 +114,9 @@ async function testServerStructuredOutput() {
 		}
 
 		// Check if we have completed results
-		const completedResults = results.filter((r: any) => r.validation_status !== "running");
+		const completedResults = results.filter(
+			(r: any) => r.validation_status !== "running" && r.validation_status !== "queued"
+		);
 
 		if (results.length === 0) {
 			console.error("❌ Timeout: No results found after 5 minutes");

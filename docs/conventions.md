@@ -171,6 +171,38 @@ make stop
 
 **Single Repository Analysis**: The analyzer agent is designed to analyze one repository at a time. When building new analysis features, ensure prompts specify which single repository to analyze to avoid cross-repository contamination.
 
+### Repository Status Lifecycle
+
+**Status Flow**: All repositories follow a consistent status lifecycle from initiation to completion:
+
+```
+"queued" → "running" → "success"/"failed"/"cancelled"
+```
+
+**Status Definitions:**
+
+- **`"queued"`**: Repository is waiting to be processed (initial state for all repos)
+- **`"running"`**: Repository is currently being processed by the janitor agent
+- **`"success"`**: Repository validation completed successfully
+- **`"failed"`**: Repository validation failed or encountered errors
+- **`"cancelled"`**: Processing was explicitly cancelled by user
+
+**Processing Rules:**
+
+1. **Initial State**: All repositories start as `"queued"` when a run is initiated
+2. **Sequential Processing**: Only one repository is `"running"` at a time per run
+3. **Status Updates**: Status changes are immediately persisted to database
+4. **Continue Logic**: Incomplete repositories (`"queued"` or `"running"`) can be resumed
+5. **Cancellation**: Both `"queued"` and `"running"` repositories can be cancelled
+
+**Database Queries**: Functions that work with incomplete repositories must query for both `"queued"` and `"running"` status:
+
+```typescript
+// Correct: Find incomplete repositories
+`validation_status=eq.queued OR validation_status=eq.running` // Incorrect: Missing queued repositories
+`validation_status=eq.running`;
+```
+
 ### Tool Implementation Patterns
 
 #### Direct Tool Integration (PREFERRED)
@@ -559,7 +591,7 @@ export const validationResults = pgTable(
         run_id: uuid("run_id").notNull(),
         repository_name: text("repository_name").notNull(),
         organization: text("organization").notNull(),
-        validation_status: text("validation_status").notNull(),
+        validation_status: text("validation_status").notNull(), // See "Repository Status Lifecycle" section
         results_json: jsonb("results_json").notNull(),
         created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
         // Enhanced prompt tracking

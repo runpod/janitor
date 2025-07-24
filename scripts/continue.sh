@@ -119,7 +119,7 @@ else
         -H "apikey: $SUPABASE_ANON_KEY" \
         -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
         -H "Content-Type: application/json" \
-        "$SUPABASE_URL/rest/v1/validation_results?validation_status=eq.running&created_at=lt.$threshold_time&order=created_at.desc")
+        "$SUPABASE_URL/rest/v1/validation_results?or=(validation_status.eq.running,validation_status.eq.queued)&created_at=lt.$threshold_time&order=created_at.desc")
     
     # Check if we got results
     if [ -z "$orphaned_response" ] || [ "$orphaned_response" = "[]" ]; then
@@ -132,7 +132,7 @@ else
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             -H "Content-Type: application/json" \
-            "$SUPABASE_URL/rest/v1/validation_results?validation_status=eq.running&order=created_at.desc&limit=10")
+            "$SUPABASE_URL/rest/v1/validation_results?or=(validation_status.eq.running,validation_status.eq.queued)&order=created_at.desc&limit=10")
         
         if [ "$recent_response" != "[]" ]; then
             echo "$recent_response" | jq -r '.[] | "  🔄 \(.run_id[0:8])... - \(.organization)/\(.repository_name) (started \(.created_at | split("T")[0]))"'

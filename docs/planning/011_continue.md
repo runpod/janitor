@@ -11,7 +11,7 @@ As a developer janitor, I want a "continue" command driven by "make continue" so
 
 1. Orphaned Validation Detection
 
-    - Query the database for entries with `validation_status="running"` that are older than a configurable threshold (e.g., 5 hours)
+    - Query the database for entries with `validation_status="running"` or `"queued"` that are older than a configurable threshold (e.g., 5 hours)
     - Group orphaned entries by `run_id` to show which runs were interrupted
     - Display repository details, timestamps, and original prompts for context
 
@@ -24,7 +24,7 @@ As a developer janitor, I want a "continue" command driven by "make continue" so
 3. Resume Processing Logic
 
     - For continued runs, reuse existing `run_id` and preserve original prompt context
-    - Process only repositories with `validation_status="running"` from the selected run
+    - Process only repositories with `validation_status="running"` or `"queued"` from the selected run
     - Update database immediately as repositories complete (maintaining existing pattern)
 
 4. Database Operations

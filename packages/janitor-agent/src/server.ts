@@ -98,10 +98,10 @@ app.post("/api/prompt", async (req: Request, res: Response) => {
 				run_id: runId,
 				repository_name: repo.name,
 				organization: repo.org,
-				validation_status: "running",
+				validation_status: "queued",
 				results_json: {
-					status: "started",
-					message: "Processing initiated",
+					status: "queued",
+					message: "Queued for processing",
 					timestamp: new Date().toISOString(),
 				},
 				// Enhanced prompt tracking
@@ -238,13 +238,13 @@ app.post("/api/continue/:runId", async (req: Request, res: Response) => {
 
 		console.log(`🔄 Resuming ${repositories.length} incomplete repositories for run ${runId}`);
 
-		// Update existing entries to refresh timestamp and ensure they're marked as running
+		// Update existing entries to refresh timestamp and mark as queued for resumption
 		for (const repo of repositories) {
 			await updateValidationResult(runId, repo.name, {
-				validation_status: "running",
+				validation_status: "queued",
 				results_json: {
-					status: "resumed",
-					message: "Processing resumed",
+					status: "queued",
+					message: "Queued for resumption",
 					timestamp: new Date().toISOString(),
 				},
 			});
@@ -321,6 +321,16 @@ async function processCustomPromptRequest(
 			console.log(
 				`\n📦 Processing repository ${i + 1}/${parsedPrompt.repositories.length}: ${repoFullName}`
 			);
+
+			// Update status to "running" before processing starts
+			await updateValidationResult(runId, repo.name, {
+				validation_status: "running",
+				results_json: {
+					status: "running",
+					message: "Processing started",
+					timestamp: new Date().toISOString(),
+				},
+			});
 
 			// Step 1: Run the main janitor agent for this repository (outside try-catch to preserve response)
 			let janitorResponse = null;
@@ -664,6 +674,16 @@ async function processContinuedPromptRequest(
 			console.log(
 				`\n📦 Processing repository ${i + 1}/${parsedPrompt.repositories.length}: ${repoFullName} (continued)`
 			);
+
+			// Update status to "running" before processing starts
+			await updateValidationResult(runId, repo.name, {
+				validation_status: "running",
+				results_json: {
+					status: "running",
+					message: "Processing resumed",
+					timestamp: new Date().toISOString(),
+				},
+			});
 
 			// Step 1: Run the main janitor agent for this repository (outside try-catch to preserve response)
 			let janitorResponse = null;

@@ -143,7 +143,7 @@ CREATE TABLE validation_results (
   run_id UUID NOT NULL,
   repository_name TEXT NOT NULL,
   organization TEXT NOT NULL,
-  validation_status TEXT NOT NULL, -- 'success', 'failed', 'running'
+  validation_status TEXT NOT NULL, -- 'success', 'failed', 'running', 'queued', 'cancelled'
   results_json JSONB NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

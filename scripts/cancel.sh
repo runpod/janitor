@@ -39,7 +39,7 @@ if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
         -H "apikey: $SUPABASE_ANON_KEY" \
         -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
         -H "Content-Type: application/json" \
-        "$SUPABASE_URL/rest/v1/validation_results?run_id=eq.$RUN_ID&validation_status=eq.running&order=created_at.desc")
+        "$SUPABASE_URL/rest/v1/validation_results?run_id=eq.$RUN_ID&or=(validation_status.eq.running,validation_status.eq.queued)&order=created_at.desc")
     
     if [ "$run_details" != "[]" ]; then
         repo_count=$(echo "$run_details" | jq '. | length')
@@ -73,7 +73,7 @@ else
 fi
 
 # Update all running repositories for this run_id to cancelled status
-response=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/validation_results?run_id=eq.$RUN_ID&validation_status=eq.running" \
+response=$(curl -s -X PATCH "$SUPABASE_URL/rest/v1/validation_results?run_id=eq.$RUN_ID&or=(validation_status.eq.running,validation_status.eq.queued)" \
     -H "apikey: $SUPABASE_ANON_KEY" \
     -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
     -H "Content-Type: application/json" \
