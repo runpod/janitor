@@ -641,6 +641,86 @@ export const cleanupContainer = async (
 };
 
 /**
+ * Cleans up a Docker image to free disk space
+ */
+export const cleanupImage = async (
+	imageName: string
+): Promise<{
+	success: boolean;
+	error?: string;
+	output?: string;
+}> => {
+	try {
+		console.log(`🧹 Cleaning up Docker image: ${imageName}`);
+
+		// Remove the image (force removal to handle dangling images)
+		console.log(`Removing image: ${imageName}`);
+		const rmiResult = await spawnWithLogs("docker", ["rmi", "-f", imageName]);
+
+		if (!rmiResult.success) {
+			console.warn(`Warning: Failed to remove image: ${rmiResult.error}`);
+			// Don't fail if image removal fails - it might be referenced elsewhere
+		} else {
+			console.log(`✅ Successfully removed image: ${imageName}`);
+		}
+
+		return {
+			success: true,
+			output: `Image ${imageName} cleanup attempted.`,
+		};
+	} catch (error: any) {
+		console.error(`Error cleaning up Docker image: ${error.message}`);
+		return {
+			success: false,
+			error: error.message,
+		};
+	}
+};
+
+/**
+ * Comprehensive cleanup of both container and image to free maximum disk space
+ */
+export const cleanupContainerAndImage = async (
+	containerId: string,
+	imageName: string
+): Promise<{
+	success: boolean;
+	error?: string;
+	output?: string;
+}> => {
+	try {
+		console.log(`🧹 Starting comprehensive cleanup for container and image...`);
+
+		// Step 1: Clean up container
+		const containerResult = await cleanupContainer(containerId);
+
+		// Step 2: Clean up image (more important for disk space)
+		const imageResult = await cleanupImage(imageName);
+
+		// Also clean up any dangling images to free extra space
+		console.log(`🧹 Cleaning up dangling images...`);
+		const pruneResult = await spawnWithLogs("docker", ["image", "prune", "-f"]);
+
+		if (pruneResult.success) {
+			console.log(`✅ Dangling images cleaned up`);
+		} else {
+			console.warn(`Warning: Failed to clean dangling images: ${pruneResult.error}`);
+		}
+
+		return {
+			success: true,
+			output: `Comprehensive cleanup completed. Container: ${containerResult.success ? "✅" : "⚠️"}, Image: ${imageResult.success ? "✅" : "⚠️"}`,
+		};
+	} catch (error: any) {
+		console.error(`Error in comprehensive cleanup: ${error.message}`);
+		return {
+			success: false,
+			error: error.message,
+		};
+	}
+};
+
+/**
  * Gets logs from a Docker container with real-time streaming
  */
 export const getContainerLogs = async (
@@ -904,29 +984,15 @@ export const dockerLogsTool = createTool({
 	id: "Docker Logs",
 	inputSchema: z.object({
 		containerId: z.string().describe("ID or name of the container to get logs from"),
-		tail: z
-			.number()
-			.optional()
-			.describe("Number of lines to show from the end of the logs (default: all)"),
+		tail: z.number().optional().describe("Number of lines to show from the end of logs"),
 		since: z
 			.string()
 			.optional()
-			.describe(
-				"Show logs since timestamp (e.g., '2021-01-01T00:00:00' or relative like '5m' for 5 minutes)"
-			),
-		follow: z
-			.boolean()
-			.optional()
-			.describe("Follow log output in real-time (will stream for up to 2 minutes)"),
-		until: z
-			.string()
-			.optional()
-			.describe(
-				"Show logs before a timestamp (e.g., '2021-01-01T00:00:00' or relative like '5m' for 5 minutes)"
-			),
+			.describe("Show logs since timestamp (e.g. '2019-01-01T20:20:20')"),
+		until: z.string().optional().describe("Show logs until timestamp"),
+		follow: z.boolean().optional().describe("Follow log output"),
 	}),
-	description:
-		"Retrieves and displays logs from a Docker container. Can follow logs in real-time or show historical logs with filtering options.",
+	description: "Gets logs from a Docker container with optional filtering and following",
 	execute: async ({ context }) => {
 		console.log(`===== DOCKER LOGS OPERATION =====`);
 		console.log(`Container ID: ${context.containerId}`);
@@ -979,5 +1045,61 @@ export const dockerLogsTool = createTool({
 		}
 
 		return logsResult;
+	},
+});
+
+export const dockerComprehensiveCleanupTool = createTool({
+	id: "Docker Comprehensive Cleanup",
+	inputSchema: z.object({
+		containerId: z.string().optional().describe("ID or name of the container to clean up"),
+		imageName: z.string().optional().describe("Name of the Docker image to remove"),
+		cleanupDanglingImages: z
+			.boolean()
+			.optional()
+			.describe("Whether to also clean up dangling images (default: true)"),
+	}),
+	description:
+		"Comprehensively cleans up Docker containers, images, and dangling images to free maximum disk space. Essential for ML/AI repositories with large models.",
+	execute: async ({ context }) => {
+		console.log(`===== DOCKER COMPREHENSIVE CLEANUP =====`);
+
+		if (context.containerId && context.imageName) {
+			console.log(
+				`Cleaning up container: ${context.containerId} and image: ${context.imageName}`
+			);
+			const result = await cleanupContainerAndImage(context.containerId, context.imageName);
+			return result;
+		} else if (context.containerId) {
+			console.log(`Cleaning up container only: ${context.containerId}`);
+			const result = await cleanupContainer(context.containerId);
+			return result;
+		} else if (context.imageName) {
+			console.log(`Cleaning up image only: ${context.imageName}`);
+			const result = await cleanupImage(context.imageName);
+			return result;
+		} else {
+			// Just clean up dangling images
+			console.log(`Cleaning up dangling images only`);
+			try {
+				const pruneResult = await spawnWithLogs("docker", ["image", "prune", "-f"]);
+				if (pruneResult.success) {
+					console.log(`✅ Dangling images cleaned up`);
+					return {
+						success: true,
+						output: "Dangling images cleanup completed",
+					};
+				} else {
+					return {
+						success: false,
+						error: `Failed to clean dangling images: ${pruneResult.error}`,
+					};
+				}
+			} catch (error: any) {
+				return {
+					success: false,
+					error: error.message,
+				};
+			}
+		}
 	},
 });

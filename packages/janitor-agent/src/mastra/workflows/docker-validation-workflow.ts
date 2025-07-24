@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
 	buildDockerImage,
 	cleanupContainer,
+	cleanupContainerAndImage,
 	findDockerfiles,
 	getContainerLogs,
 	isCudaDockerfile,
@@ -173,41 +174,11 @@ const dockerRunStep = createStep({
 		const isCuda = dockerfilePath ? isCudaDockerfile(dockerfilePath) : false;
 		console.log(`CUDA detection: ${isCuda ? "CUDA-based image detected" : "Non-CUDA image"}`);
 
-		// Check GPU availability (simplified check here - the actual check happens in runDockerContainer)
-		let hasGpu = false;
-		try {
-			const { spawn } = require("child_process");
-			await new Promise<number>(resolve => {
-				const proc = spawn("nvidia-smi", [], { stdio: "ignore" });
-				proc.on("close", (code: number) => {
-					hasGpu = code === 0;
-					resolve(code);
-				});
-				proc.on("error", () => {
-					hasGpu = false;
-					resolve(1);
-				});
-			});
-		} catch (error) {
-			hasGpu = false;
-		}
+		// Skip the buggy simplified GPU check - let runDockerContainer handle it properly
+		// The runDockerContainer function has better GPU detection and error handling
+		console.log(`🔧 Delegating GPU detection to runDockerContainer for better accuracy`);
 
-		console.log(`GPU availability: ${hasGpu ? "available" : "not available"}`);
-
-		// If CUDA image but no GPU available, skip container validation
-		if (isCuda && !hasGpu) {
-			console.log("⚠️  CUDA image detected but no GPU available");
-			console.log("🚫 Skipping container validation (build-only validation)");
-			console.log("ℹ️  Note: Full validation requires GPU-enabled instance");
-
-			return {
-				success: true,
-				skipped: true,
-				skipReason:
-					"CUDA image requires GPU for validation, but no GPU detected. Image build was successful.",
-			};
-		}
-
+		// Always try to run the container - let runDockerContainer decide if GPU is available
 		try {
 			// Generate a container name based on image name
 			const containerName = `${imageName.replace(/[^a-zA-Z0-9_.-]/g, "-")}-container-${Date.now()}`;
@@ -263,7 +234,7 @@ const dockerLogsStep = createStep({
 		skipped: z.boolean().optional(),
 		skipReason: z.string().optional(),
 	}),
-	execute: async ({ inputData }) => {
+	execute: async ({ inputData, getStepResult }) => {
 		// Check if the previous step was skipped
 		if (inputData.skipped) {
 			console.log("\n----------------------------------------------------------------");
@@ -320,19 +291,33 @@ const dockerLogsStep = createStep({
 				console.log(`📝 Retrieved ${lineCount} lines of container logs`);
 			}
 
-			// IMPORTANT: Always cleanup the container after getting logs
-			console.log(`🧹 Cleaning up container: ${containerId}`);
+			// IMPORTANT: Clean up both container AND image to free disk space
+			console.log(`🧹 Comprehensive cleanup for container and image...`);
 			try {
-				const cleanupResult = await cleanupContainer(containerId);
+				// Get image name from previous step
+				const runResult = getStepResult(dockerRunStep);
+				const buildResult = getStepResult(dockerBuildStep);
+				const imageName = buildResult?.imageName;
 
-				if (cleanupResult.success) {
-					console.log(`✅ Container ${containerId} cleaned up successfully`);
+				if (imageName) {
+					const cleanupResult = await cleanupContainerAndImage(containerId, imageName);
+					if (cleanupResult.success) {
+						console.log(`✅ Comprehensive cleanup completed successfully`);
+					} else {
+						console.warn(`⚠️  Comprehensive cleanup warning: ${cleanupResult.error}`);
+					}
 				} else {
-					console.warn(`⚠️  Container cleanup warning: ${cleanupResult.error}`);
+					// Fallback to container-only cleanup if no image name
+					const cleanupResult = await cleanupContainer(containerId);
+					if (cleanupResult.success) {
+						console.log(`✅ Container cleanup completed successfully`);
+					} else {
+						console.warn(`⚠️  Container cleanup warning: ${cleanupResult.error}`);
+					}
 				}
 			} catch (cleanupError) {
 				console.warn(
-					`⚠️  Container cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+					`⚠️  Cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
 				);
 				// Don't fail the whole step just because cleanup failed
 			}
@@ -358,7 +343,16 @@ const dockerLogsStep = createStep({
 			// Try to cleanup even if logs failed
 			try {
 				console.log(`🧹 Attempting cleanup after error for container: ${containerId}`);
-				await cleanupContainer(containerId);
+				// Get image name for comprehensive cleanup
+				const runResult = getStepResult(dockerRunStep);
+				const buildResult = getStepResult(dockerBuildStep);
+				const imageName = buildResult?.imageName;
+
+				if (imageName) {
+					await cleanupContainerAndImage(containerId, imageName);
+				} else {
+					await cleanupContainer(containerId);
+				}
 			} catch (cleanupError) {
 				console.warn(`⚠️  Cleanup after error failed: ${cleanupError}`);
 			}
