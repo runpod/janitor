@@ -1,17 +1,65 @@
 # Janitor Agent - Simplified GPU Repository Validator
 
+> [!WARNING]
+> **Archived research project — not production-ready.**
+> This was an experimental DevRel project and is no longer maintained. It was
+> **never hardened for security** and should not be deployed as-is. A security
+> audit ([DR-1386](https://linear.app/runpod/issue/DR-1386)) flagged the running
+> instance as a critical risk: the autonomous agent was exposed publicly with no
+> authentication. The internet-facing security group has since been deleted and
+> no instances are running.
+>
+> **If you want to build on this again, fix these first:**
+>
+> - **Authenticate every `/api/*` route** — currently anyone who can reach the
+>   server can drive the agent (`server.ts`).
+> - **Bind the server to `localhost`**, not `0.0.0.0` (`server.ts`), and put it
+>   behind an authenticated proxy/tunnel if remote access is needed.
+> - **Lock down the security group** — do not open ports 22/3000 to `0.0.0.0/0`;
+>   restrict to known IPs (`scripts/start-instance.sh`).
+> - **Sandbox the agent's tools** — git-clone is shell-injectable and the agent
+>   has arbitrary file read/write, so it can read its own `.env`
+>   (`git-tools.ts`, `file-system-tools.ts`).
+> - **Keep secrets off the box** — the instance `.env` held a Supabase
+>   `service_role` key and a GitHub PAT; use scoped, short-lived credentials and
+>   a secrets manager instead.
+
 A streamlined AI agent system for validating Docker repositories with GPU support. This system uses a single persistent GPU instance + Supabase for simple, cost-effective repository validation.
 
 ## 🚀 Quick Start
 
+### 1. Setup Environment
+
 ```bash
-# 1. Setup database (one-time)
-make setup-supabase
+# Copy environment template and configure
+cp .env.example .env
+# Edit .env with your API keys and AWS settings
+```
 
-# 2. Launch GPU instance & deploy
-make start     # Launch GPU instance
+### 2. Launch GPU Instance
 
-# 3. Test with simple validation (Legacy format)
+```bash
+# Automatically tries multiple GPU instance types until one works
+make start
+
+# Instance types tried in order (all NVIDIA GPUs):
+# - g6.xlarge:    $0.80/hr (4 vCPU, 16GB, NVIDIA L4,   22.4GB VRAM) - RECOMMENDED
+# - g5.xlarge:    $1.01/hr (4 vCPU, 16GB, NVIDIA A10G, 22.4GB VRAM) - CURRENT DEFAULT
+# - g6.2xlarge:   $0.98/hr (8 vCPU, 32GB, NVIDIA L4,   22.4GB VRAM) - MORE CPU/RAM
+# - g5.2xlarge:   $1.21/hr (8 vCPU, 32GB, NVIDIA A10G, 22.4GB VRAM) - MORE CPU/RAM
+# - g4dn.xlarge:  $0.53/hr (4 vCPU, 16GB, NVIDIA T4,   16GB VRAM)   - BUDGET OPTION
+```
+
+The script automatically handles:
+
+- **Instance Type Fallbacks**: If your preferred type isn't available, tries alternatives
+- **AMI Selection**: Uses latest Deep Learning AMI with CUDA 12.x
+- **Security Groups**: Auto-creates with SSH (22) and HTTP (3000) access
+- **Auto-Termination**: CPU monitor terminates idle instances (saves costs)
+
+### 3. Test with simple validation (Legacy format)
+
+```bash
 make prompt PROMPT="validate RunPod/worker-basic"
 
 # 4. Test with DSL format using default prompt
